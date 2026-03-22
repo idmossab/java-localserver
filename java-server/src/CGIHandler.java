@@ -1,3 +1,5 @@
+import config.ConfigLoader;
+
 public final class CGIHandler {
     public CGIHandler(ConfigLoader config) {
         // TODO: store CGI settings

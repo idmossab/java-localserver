@@ -1,3 +1,5 @@
+import config.ConfigLoader;
+
 public final class Router {
     public Router(ConfigLoader config) {
         // TODO: build routing table from config
