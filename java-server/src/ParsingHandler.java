@@ -1,17 +1,27 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class ParsingHandler {
     private final String jsonText;
+    public String host;
+    public HashMap<String, String> errorPages;
+    public ArrayList<HashMap<String, String>> routes;
+    public List<Integer> ports;
+    public int defaultServer;
+    public int clientBodyLimitBytes;
+    public HashMap<String, String> cgi;
 
     public ParsingHandler(String jsonText) {
         this.jsonText = jsonText;
+        parse();
     }
 
     public HashMap<String, Object> parse() {
         try {
             Object root = new JsonParser(jsonText).parseValueAndFinish();
+            System.out.println("Parsing successful: " + root);
             if (!(root instanceof HashMap)) {
                 throw new IllegalArgumentException("config root must be object");
             }
@@ -26,10 +36,18 @@ public final class ParsingHandler {
             checkStringMap(config.get("error_pages"), "error_pages");
             checkRoutes(config.get("routes"));
 
-            Object cgi = config.get("cgi");
-            if (cgi != null) {
-                checkStringMap(cgi, "cgi");
+            Object cgiObject = config.get("cgi");
+            if (cgiObject != null) {
+                checkStringMap(cgiObject, "cgi");
             }
+
+            host = (String) config.get("host");
+            ports = castIntegerList(config.get("ports"));
+            defaultServer = (Integer) config.get("default_server");
+            clientBodyLimitBytes = (Integer) config.get("client_body_limit_bytes");
+            errorPages = castStringMap(config.get("error_pages"));
+            routes = castRoutes(config.get("routes"));
+            cgi = cgiObject == null ? new HashMap<>() : castStringMap(cgiObject);
 
             return config;
         } catch (Exception e) {
@@ -56,12 +74,12 @@ public final class ParsingHandler {
             throw new IllegalArgumentException("ports must be array");
         }
 
-        ArrayList<?> ports = (ArrayList<?>) value;
-        if (ports.isEmpty()) {
+        ArrayList<?> portList = (ArrayList<?>) value;
+        if (portList.isEmpty()) {
             throw new IllegalArgumentException("ports must not be empty");
         }
 
-        for (Object port : ports) {
+        for (Object port : portList) {
             if (!(port instanceof Integer)) {
                 throw new IllegalArgumentException("ports must contain only numbers");
             }
@@ -86,8 +104,8 @@ public final class ParsingHandler {
             throw new IllegalArgumentException("routes must be array");
         }
 
-        ArrayList<?> routes = (ArrayList<?>) value;
-        for (Object route : routes) {
+        ArrayList<?> routeList = (ArrayList<?>) value;
+        for (Object route : routeList) {
             if (!(route instanceof HashMap)) {
                 throw new IllegalArgumentException("each route must be object");
             }
@@ -113,6 +131,40 @@ public final class ParsingHandler {
                 throw new IllegalArgumentException("route autoindex must be boolean");
             }
         }
+    }
+
+    private List<Integer> castIntegerList(Object value) {
+        ArrayList<?> rawList = (ArrayList<?>) value;
+        ArrayList<Integer> numbers = new ArrayList<>();
+        for (Object item : rawList) {
+            numbers.add((Integer) item);
+        }
+        return numbers;
+    }
+
+    private HashMap<String, String> castStringMap(Object value) {
+        HashMap<?, ?> rawMap = (HashMap<?, ?>) value;
+        HashMap<String, String> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+            result.put((String) entry.getKey(), (String) entry.getValue());
+        }
+        return result;
+    }
+
+    private ArrayList<HashMap<String, String>> castRoutes(Object value) {
+        ArrayList<?> rawRoutes = (ArrayList<?>) value;
+        ArrayList<HashMap<String, String>> result = new ArrayList<>();
+
+        for (Object route : rawRoutes) {
+            HashMap<?, ?> rawRoute = (HashMap<?, ?>) route;
+            HashMap<String, String> simpleRoute = new HashMap<>();
+            simpleRoute.put("path", (String) rawRoute.get("path"));
+            simpleRoute.put("root", (String) rawRoute.get("root"));
+            simpleRoute.put("index", (String) rawRoute.get("index"));
+            result.add(simpleRoute);
+        }
+
+        return result;
     }
 
     private static final class JsonParser {
