@@ -21,7 +21,7 @@ public final class Server {
     public void start() {
         try {
             // 1- get port from config
-            int port = config.getPort();
+            int port = config.getPorts().get(0);
             System.out.println("Starting server on port " + port);
             // 02- open socket and listen for connections not blocking
             ServerSocketChannel serverChannel = ServerSocketChannel.open();

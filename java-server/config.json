@@ -1,6 +1,6 @@
 {
   "host": "0.0.0.0",
-  "ports": [8080],
+  "ports": [8080, 8081],
   "client_body_limit_bytes": 1048576,
   "error_pages": {
     "400": "errors/400.html",

@@ -1,8 +1,11 @@
 package config;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class ConfigLoader {
     private final ParsingHandler parser;
-    private int port;
+    private List<Integer> ports;
 
     public ConfigLoader(ParsingHandler parser) {
         this.parser = parser;
@@ -14,15 +17,15 @@ public final class ConfigLoader {
                 throw new IllegalArgumentException("ports is empty");
             }
 
-            this.port = parser.ports.get(0);
-            System.out.println("ConfigLoader loaded port: " + port);
+            this.ports = new ArrayList<>(parser.ports);
+            System.out.println("ConfigLoader loaded port: " + ports);
         } catch (Exception e) {
             System.err.println("ConfigLoader error: " + e.getMessage());
             System.exit(1);
         }
     }
 
-    public int getPort() {
-        return port;
+    public List<Integer> getPorts() {
+        return ports;
     }
 }
