@@ -1,6 +1,7 @@
 package config;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -106,7 +107,7 @@ public final class ParsingHandler {
         }
 
         private Map<String, Object> parseObject() {
-            java.util.HashMap<String, Object> object = new java.util.HashMap<>();
+            HashMap<String, Object> object = new HashMap<>();
             expect('{');
             skipWhitespace();
 
@@ -172,26 +173,13 @@ public final class ParsingHandler {
                     switch (escaped) {
                     case '"':
                     case '\\':
-                    case '/':
                         result.append(escaped);
-                        break;
-                    case 'b':
-                        result.append('\b');
-                        break;
-                    case 'f':
-                        result.append('\f');
                         break;
                     case 'n':
                         result.append('\n');
                         break;
-                    case 'r':
-                        result.append('\r');
-                        break;
                     case 't':
                         result.append('\t');
-                        break;
-                    case 'u':
-                        result.append(readUnicode());
                         break;
                     default:
                         throw error("invalid escape");
@@ -204,18 +192,18 @@ public final class ParsingHandler {
             throw error("string not closed");
         }
 
-        private char readUnicode() {
-            if (index + 4 > text.length()) {
-                throw error("invalid unicode escape");
-            }
-            String hex = text.substring(index, index + 4);
-            index += 4;
-            try {
-                return (char) Integer.parseInt(hex, 16);
-            } catch (NumberFormatException e) {
-                throw error("invalid unicode escape");
-            }
-        }
+        // private char readUnicode() {
+        //     if (index + 4 > text.length()) {
+        //         throw error("invalid unicode escape");
+        //     }
+        //     String hex = text.substring(index, index + 4);
+        //     index += 4;
+        //     try {
+        //         return (char) Integer.parseInt(hex, 16);
+        //     } catch (NumberFormatException e) {
+        //         throw error("invalid unicode escape");
+        //     }
+        // }
 
         private Boolean parseBoolean() {
             if (text.startsWith("true", index)) {
