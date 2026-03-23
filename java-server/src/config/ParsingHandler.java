@@ -11,6 +11,7 @@ public final class ParsingHandler {
     public List<Integer> ports;
     public int clientBodyLimitBytes;
     public Map<String, String> errorPages;
+    public Map<String, Map<String, String>> routes;
 
     public ParsingHandler(String jsonText) {
         this.jsonText = jsonText;
@@ -30,6 +31,7 @@ public final class ParsingHandler {
             ports = readPorts(config.get("ports"));
             clientBodyLimitBytes = readClientBodyLimit(config.get("client_body_limit_bytes"));
             errorPages = readErrorPages(config.get("error_pages"));
+            routes = readRoutes(config.get("routes"));
         } catch (Exception e) {
             System.err.println("Parsing error: " + e.getMessage());
             System.exit(1);
@@ -86,5 +88,39 @@ private Map<String, String> readErrorPages(Object value) {
     return pages;
 }
 
+private Map<String, Map<String, String>> readRoutes(Object value) {
+    if (!(value instanceof Map<?, ?>)) {
+        throw new IllegalArgumentException("routes must be object");
+    }
+
+    Map<?, ?> raw = (Map<?, ?>) value;
+    Map<String, Map<String, String>> map = new HashMap<>();
+
+    for (Map.Entry<?, ?> entry : raw.entrySet()) {
+        if (!(entry.getKey() instanceof String)) {
+            throw new IllegalArgumentException("route path must be string");
+        }
+
+        String routePath = (String) entry.getKey();
+        Object methodsObj = entry.getValue();
+
+        if (!(methodsObj instanceof Map<?, ?>)) {
+            throw new IllegalArgumentException("methods for route " + routePath + " must be object");
+        }
+
+        Map<?, ?> rawMethods = (Map<?, ?>) methodsObj;
+        Map<String, String> methodMap = new HashMap<>();
+        for (Map.Entry<?, ?> me : rawMethods.entrySet()) {
+            if (!(me.getKey() instanceof String) || !(me.getValue() instanceof String)) {
+                throw new IllegalArgumentException("method keys and handlers must be strings");
+            }
+            methodMap.put((String) me.getKey(), (String) me.getValue());
+        }
+
+        map.put(routePath, methodMap);
+    }
+
+    return map;
+}
 
 }
