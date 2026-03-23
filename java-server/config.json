@@ -1,30 +1,14 @@
 {
-  "host": "0.0.0.0",
-  "ports": [8080, 8081],
-  "client_body_limit_bytes": 1048576,
-  "error_pages": {
-    "400": "errors/400.html",
-    "403": "errors/403.html",
-    "404": "errors/404.html",
-    "500": "errors/500.html"
-  },
-  "routes": {
-    "/": {
-      "GET": "HomeHandler"
-    },
-    "/api/data": {
-      "GET": "DataGetHandler",
-      "POST": "DataPostHandler",
-      "PUT": "DataUpdateHandler",
-      "DELETE": "DataDeleteHandler"
-    },
-    "/about": {
-      "GET": "AboutHandler"
+    "host": "localhost",
+    "port": 8080,
+    "wwwRoot": "www",
+    "maxBodySize": 1048576,
+    "errorPages": {
+        "400": "errors/400.html",
+        "403": "errors/403.html",
+        "404": "errors/404.html",
+        "405": "errors/405.html",
+        "413": "errors/413.html",
+        "500": "errors/500.html"
     }
-  },
-  "cgi": {
-    ".py": "/usr/bin/python3",
-    ".php": "/usr/bin/php-cgi"
-  }
-
 }

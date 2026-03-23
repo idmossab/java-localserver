@@ -1,0 +1,9 @@
+# Compiled
+out/
+
+# Uploads
+www/uploads/
+
+# OS
+.DS_Store
+*.swp
