@@ -12,10 +12,10 @@ public final class ParsingHandler {
     public int clientBodyLimitBytes;
     public Map<String, String> errorPages;
     public Map<String, Map<String, String>> routes;
+    public Map<String, String> cgi;
 
     public ParsingHandler(String jsonText) {
         this.jsonText = jsonText;
-        this.ports = new ArrayList<>();
         parse();
     }
 
@@ -32,6 +32,7 @@ public final class ParsingHandler {
             clientBodyLimitBytes = readClientBodyLimit(config.get("client_body_limit_bytes"));
             errorPages = readErrorPages(config.get("error_pages"));
             routes = readRoutes(config.get("routes"));
+            cgi = readCGI(config.get("cgi"));
         } catch (Exception e) {
             System.err.println("Parsing error: " + e.getMessage());
             System.exit(1);
@@ -118,6 +119,24 @@ private Map<String, Map<String, String>> readRoutes(Object value) {
         }
 
         map.put(routePath, methodMap);
+    }
+
+    return map;
+}
+
+private Map<String, String> readCGI(Object value) {
+    if (!(value instanceof Map<?, ?>)) {
+        throw new IllegalArgumentException("cgi must be object");
+    }
+
+    Map<?, ?> raw = (Map<?, ?>) value;
+    Map<String, String> map = new HashMap<>();
+
+    for (Map.Entry<?, ?> entry : raw.entrySet()) {
+        if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
+            throw new IllegalArgumentException("cgi keys and values must be strings");
+        }
+        map.put((String) entry.getKey(), (String) entry.getValue());
     }
 
     return map;

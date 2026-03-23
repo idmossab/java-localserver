@@ -14,7 +14,7 @@ public final class Main {
             ConfigLoader configLoader = new ConfigLoader(parser);
             configLoader.load();
 
-            System.out.println("Config file read successfully. Host: " + parser.host + ", Ports: " + parser.ports + ", Client Body Limit: " + parser.clientBodyLimitBytes + " bytes"+", Error Pages: " + parser.errorPages + ", Routes: " + parser.routes);
+            System.out.println("Config file read successfully. Host: " + parser.host + ", Ports: " + parser.ports + ", Client Body Limit: " + parser.clientBodyLimitBytes + " bytes"+", Error Pages: " + parser.errorPages + ", Routes: " + parser.routes + ", CGI: " + parser.cgi);
         } catch (Exception e) {
             System.err.println("Main error: " + e.getMessage());
             System.exit(1);
