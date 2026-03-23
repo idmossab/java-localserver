@@ -1,5 +1,5 @@
-import config.ParsingHandler;
 import config.ConfigLoader;
+import config.ParsingHandler;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -14,7 +14,7 @@ public final class Main {
             ConfigLoader configLoader = new ConfigLoader(parser);
             configLoader.load();
 
-            System.out.println("Config file read successfully. Host: " + parser.host + ", Ports: " + parser.ports);
+            System.out.println("Config file read successfully. Host: " + parser.host + ", Ports: " + parser.ports + ", Client Body Limit: " + parser.clientBodyLimitBytes + " bytes");
         } catch (Exception e) {
             System.err.println("Main error: " + e.getMessage());
             System.exit(1);

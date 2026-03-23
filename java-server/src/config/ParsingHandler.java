@@ -8,6 +8,7 @@ public final class ParsingHandler {
     private final String jsonText;
     public String host;
     public List<Integer> ports;
+    public int clientBodyLimitBytes;
 
     public ParsingHandler(String jsonText) {
         this.jsonText = jsonText;
@@ -25,6 +26,7 @@ public final class ParsingHandler {
             Map<?, ?> config = (Map<?, ?>) root;
             host = readHost(config);
             ports = readPorts(config.get("ports"));
+            clientBodyLimitBytes = readClientBodyLimit(config.get("client_body_limit_bytes"));
         } catch (Exception e) {
             System.err.println("Parsing error: " + e.getMessage());
             System.exit(1);
@@ -57,5 +59,12 @@ public final class ParsingHandler {
             parsedPorts.add((Integer) port);
         }
         return parsedPorts;
+    }
+
+    private int readClientBodyLimit(Object value) {
+        if (!(value instanceof Integer)) {
+            throw new IllegalArgumentException("client_body_limit_bytes must be number");
+        }
+        return (Integer) value;
     }
 }
