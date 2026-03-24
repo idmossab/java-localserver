@@ -8,20 +8,16 @@
     "404": "errors/404.html",
     "500": "errors/500.html"
   },
-  "routes": {
-    "/": {
-      "GET": "HomeHandler"
+  "routes": [
+    {
+      "path": "/",
+      "methods": ["GET"]
     },
-    "/api/data": {
-      "GET": "DataGetHandler",
-      "POST": "DataPostHandler",
-      "PUT": "DataUpdateHandler",
-      "DELETE": "DataDeleteHandler"
-    },
-    "/about": {
-      "GET": "AboutHandler"
+    {
+      "path": "/api/data",
+      "methods": ["GET", "POST", "DELETE"]
     }
-  },
+  ],
   "cgi": {
     ".py": "/usr/bin/python3",
     ".php": "/usr/bin/php-cgi"

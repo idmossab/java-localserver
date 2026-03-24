@@ -11,7 +11,7 @@ public final class ParsingHandler {
     public List<Integer> ports;
     public int clientBodyLimitBytes;
     public Map<String, String> errorPages;
-    public Map<String, Map<String, String>> routes;
+    public Map<String, List<String>> routes;
     public Map<String, String> cgi;
 
     public ParsingHandler(String jsonText) {
@@ -89,36 +89,45 @@ private Map<String, String> readErrorPages(Object value) {
     return pages;
 }
 
-private Map<String, Map<String, String>> readRoutes(Object value) {
-    if (!(value instanceof Map<?, ?>)) {
-        throw new IllegalArgumentException("routes must be object");
+private Map<String, List<String>> readRoutes(Object value) {
+    if (!(value instanceof List<?>)) {
+        throw new IllegalArgumentException("routes must be array");
     }
 
-    Map<?, ?> raw = (Map<?, ?>) value;
-    Map<String, Map<String, String>> map = new HashMap<>();
+    List<?> rawRoutes = (List<?>) value;
+    Map<String, List<String>> map = new HashMap<>();
 
-    for (Map.Entry<?, ?> entry : raw.entrySet()) {
-        if (!(entry.getKey() instanceof String)) {
-            throw new IllegalArgumentException("route path must be string");
+    for (Object obj : rawRoutes) {
+        if (!(obj instanceof Map<?, ?>)) {
+            throw new IllegalArgumentException("each route must be object");
         }
 
-        String routePath = (String) entry.getKey();
-        Object methodsObj = entry.getValue();
+        Map<?, ?> routeMap = (Map<?, ?>) obj;
 
-        if (!(methodsObj instanceof Map<?, ?>)) {
-            throw new IllegalArgumentException("methods for route " + routePath + " must be object");
+        Object pathObj = routeMap.get("path");
+        Object methodsObj = routeMap.get("methods");
+
+        if (!(pathObj instanceof String)) {
+            throw new IllegalArgumentException("path must be string");
         }
 
-        Map<?, ?> rawMethods = (Map<?, ?>) methodsObj;
-        Map<String, String> methodMap = new HashMap<>();
-        for (Map.Entry<?, ?> me : rawMethods.entrySet()) {
-            if (!(me.getKey() instanceof String) || !(me.getValue() instanceof String)) {
-                throw new IllegalArgumentException("method keys and handlers must be strings");
+        if (!(methodsObj instanceof List<?>)) {
+            throw new IllegalArgumentException("methods must be array");
+        }
+
+        String path = (String) pathObj;
+        List<?> rawMethods = (List<?>) methodsObj;
+
+        List<String> methods = new ArrayList<>();
+
+        for (Object m : rawMethods) {
+            if (!(m instanceof String)) {
+                throw new IllegalArgumentException("method must be string");
             }
-            methodMap.put((String) me.getKey(), (String) me.getValue());
+            methods.add((String) m);
         }
 
-        map.put(routePath, methodMap);
+        map.put(path, methods);
     }
 
     return map;
