@@ -9,6 +9,7 @@ public final class Main {
 
     public static void main(String[] args) {
         try {
+            
             String jsonText = Files.readString(Path.of("config.json"));
             ParsingHandler parser = new ParsingHandler(jsonText);
             ConfigLoader configLoader = new ConfigLoader(parser);
