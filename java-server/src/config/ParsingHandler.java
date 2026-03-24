@@ -9,7 +9,6 @@ public final class ParsingHandler {
     public static final class ServerConfig {
         public String host;
         public List<Integer> ports;
-        public String nameServer;
         public int clientBodyLimitBytes;
         public int timeoutSeconds;
         public Map<String, String> errorPages;
@@ -55,9 +54,8 @@ public final class ParsingHandler {
                 ServerConfig serverConfig = new ServerConfig();
                 serverConfig.host = readHost(serverMap);
                 serverConfig.ports = readPorts(serverMap.get("ports"));
-                serverConfig.nameServer = readNameServer(serverMap.get("name_server"));
                 serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
-                serverConfig.timeoutSeconds = readSetTimeoutSeconds(serverMap.get("set_timeout_seconds"));
+                serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
                 serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
                 serverConfig.routes = readRoutes(serverMap.get("routes"));
                 serverConfig.cgi = readCGI(serverMap.get("cgi"));
@@ -98,13 +96,6 @@ public final class ParsingHandler {
         return parsedPorts;
     }
 
-    private String readNameServer(Object value) {
-        if (value == null) return null; // name_server optional
-        if (!(value instanceof String)) {
-            throw new IllegalArgumentException("name_server must be string");
-        }
-        return (String) value;
-    }
 
     private int readClientBodyLimit(Object value) {
         if (!(value instanceof Integer)) {
@@ -113,7 +104,7 @@ public final class ParsingHandler {
         return (Integer) value;
     }
 
-    private int readSetTimeoutSeconds(Object value) {
+    private int readTimeoutSeconds(Object value) {
         if (!(value instanceof Integer)) {
             throw new IllegalArgumentException("set_timeout_seconds must be number");
         }
@@ -207,7 +198,7 @@ public final class ParsingHandler {
         }
 
         if(!RegexValidator.isValidTimeoutSeconds(serverConfig.timeoutSeconds)) {
-            throw new IllegalArgumentException("set_timeout_seconds must be positive");
+            throw new IllegalArgumentException("timeout_seconds must be positive");
         }
 
         for (Map.Entry<String, List<String>> route : serverConfig.routes.entrySet()) {

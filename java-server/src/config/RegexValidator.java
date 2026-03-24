@@ -28,7 +28,10 @@ public final class RegexValidator {
         }
         return true;
     }
-
+    // validate set_timeout_seconds
+    public static boolean isValidTimeoutSeconds(int timeoutSeconds) {
+        return timeoutSeconds > 0;
+    }
     // validate path (basic)
     public static boolean isValidPath(String path) {
         if (path == null || path.isEmpty()) return false;
