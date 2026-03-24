@@ -33,6 +33,7 @@ public final class ParsingHandler {
             errorPages = readErrorPages(config.get("error_pages"));
             routes = readRoutes(config.get("routes"));
             cgi = readCGI(config.get("cgi"));
+            validateConfig();
         } catch (Exception e) {
             System.err.println("Parsing error: " + e.getMessage());
             System.exit(1);
@@ -74,81 +75,99 @@ public final class ParsingHandler {
         return (Integer) value;
     }
 
-private Map<String, String> readErrorPages(Object value) {
-    if (!(value instanceof Map<?, ?>)) {
-        throw new IllegalArgumentException("error_pages must be object");
-    }
-    Map<?, ?> raw = (Map<?, ?>) value;
-    Map<String, String> pages = new HashMap<>();
-    for (Map.Entry<?, ?> entry : raw.entrySet()) {
-        if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
-            throw new IllegalArgumentException("error_pages keys and values must be strings");
+    private Map<String, String> readErrorPages(Object value) {
+        if (!(value instanceof Map<?, ?>)) {
+            throw new IllegalArgumentException("error_pages must be object");
         }
-        pages.put((String) entry.getKey(), (String) entry.getValue());
-    }
-    return pages;
-}
-
-private Map<String, List<String>> readRoutes(Object value) {
-    if (!(value instanceof List<?>)) {
-        throw new IllegalArgumentException("routes must be array");
-    }
-
-    List<?> rawRoutes = (List<?>) value;
-    Map<String, List<String>> map = new HashMap<>();
-
-    for (Object obj : rawRoutes) {
-        if (!(obj instanceof Map<?, ?>)) {
-            throw new IllegalArgumentException("each route must be object");
-        }
-
-        Map<?, ?> routeMap = (Map<?, ?>) obj;
-
-        Object pathObj = routeMap.get("path");
-        Object methodsObj = routeMap.get("methods");
-
-        if (!(pathObj instanceof String)) {
-            throw new IllegalArgumentException("path must be string");
-        }
-
-        if (!(methodsObj instanceof List<?>)) {
-            throw new IllegalArgumentException("methods must be array");
-        }
-
-        String path = (String) pathObj;
-        List<?> rawMethods = (List<?>) methodsObj;
-
-        List<String> methods = new ArrayList<>();
-
-        for (Object m : rawMethods) {
-            if (!(m instanceof String)) {
-                throw new IllegalArgumentException("method must be string");
+        Map<?, ?> raw = (Map<?, ?>) value;
+        Map<String, String> pages = new HashMap<>();
+        for (Map.Entry<?, ?> entry : raw.entrySet()) {
+            if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
+                throw new IllegalArgumentException("error_pages keys and values must be strings");
             }
-            methods.add((String) m);
+            pages.put((String) entry.getKey(), (String) entry.getValue());
+        }
+        return pages;
+    }
+
+    private Map<String, List<String>> readRoutes(Object value) {
+        if (!(value instanceof List<?>)) {
+            throw new IllegalArgumentException("routes must be array");
         }
 
-        map.put(path, methods);
-    }
+        List<?> rawRoutes = (List<?>) value;
+        Map<String, List<String>> map = new HashMap<>();
 
-    return map;
-}
+        for (Object obj : rawRoutes) {
+            if (!(obj instanceof Map<?, ?>)) {
+                throw new IllegalArgumentException("each route must be object");
+            }
 
-private Map<String, String> readCGI(Object value) {
-    if (!(value instanceof Map<?, ?>)) {
-        throw new IllegalArgumentException("cgi must be object");
-    }
+            Map<?, ?> routeMap = (Map<?, ?>) obj;
 
-    Map<?, ?> raw = (Map<?, ?>) value;
-    Map<String, String> map = new HashMap<>();
+            Object pathObj = routeMap.get("path");
+            Object methodsObj = routeMap.get("methods");
 
-    for (Map.Entry<?, ?> entry : raw.entrySet()) {
-        if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
-            throw new IllegalArgumentException("cgi keys and values must be strings");
+            if (!(pathObj instanceof String)) {
+                throw new IllegalArgumentException("path must be string");
+            }
+
+            if (!(methodsObj instanceof List<?>)) {
+                throw new IllegalArgumentException("methods must be array");
+            }
+
+            String path = (String) pathObj;
+            List<?> rawMethods = (List<?>) methodsObj;
+
+            List<String> methods = new ArrayList<>();
+
+            for (Object m : rawMethods) {
+                if (!(m instanceof String)) {
+                    throw new IllegalArgumentException("method must be string");
+                }
+                methods.add((String) m);
+            }
+
+            map.put(path, methods);
         }
-        map.put((String) entry.getKey(), (String) entry.getValue());
+
+        return map;
     }
 
-    return map;
-}
+    private Map<String, String> readCGI(Object value) {
+        if (!(value instanceof Map<?, ?>)) {
+            throw new IllegalArgumentException("cgi must be object");
+        }
 
+        Map<?, ?> raw = (Map<?, ?>) value;
+        Map<String, String> map = new HashMap<>();
+
+        for (Map.Entry<?, ?> entry : raw.entrySet()) {
+            if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
+                throw new IllegalArgumentException("cgi keys and values must be strings");
+            }
+            map.put((String) entry.getKey(), (String) entry.getValue());
+        }
+
+        return map;
+    }
+
+    private void validateConfig() {
+        if (!RegexValidator.isValidHost(host)) {
+            throw new IllegalArgumentException("host format is invalid");
+        }
+
+        if (!RegexValidator.isValidPorts(ports)) {
+            throw new IllegalArgumentException("ports are invalid");
+        }
+
+        for (Map.Entry<String, List<String>> route : routes.entrySet()) {
+            if (!RegexValidator.isValidPath(route.getKey())) {
+                throw new IllegalArgumentException("route path is invalid: " + route.getKey());
+            }
+            if (!RegexValidator.isValidMethods(route.getValue())) {
+                throw new IllegalArgumentException("route methods are invalid for path: " + route.getKey());
+            }
+        }
+    }
 }
