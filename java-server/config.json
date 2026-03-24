@@ -1,26 +1,57 @@
 {
-  "host": "0.0.0.0",
-  "ports": [8080, 8081],
-  "client_body_limit_bytes": 1048576,
-  "error_pages": {
-    "400": "errors/400.html",
-    "403": "errors/403.html",
-    "404": "errors/404.html",
-    "500": "errors/500.html"
-  },
-  "routes": [
+  "servers": [
     {
-      "path": "/",
-      "methods": ["GET"]
+      "host": "0.0.0.0",
+      "ports": [8080, 8081],
+      "name": "server1",
+      "client_body_limit_bytes": 1048576,
+      "timeout_seconds": 30,
+      "error_pages": {
+        "400": "errors/400.html",
+        "403": "errors/403.html",
+        "404": "errors/404.html",
+        "500": "errors/500.html"
+      },
+      "routes": [
+        {
+          "path": "/",
+          "methods": ["GET"]
+        },
+        {
+          "path": "/api/data",
+          "methods": ["GET", "POST", "DELETE"]
+        }
+      ],
+      "cgi": {
+        ".py": "/usr/bin/python3",
+        ".php": "/usr/bin/php-cgi"
+      }
     },
     {
-      "path": "/api/data",
-      "methods": ["GET", "POST", "DELETE"]
+      "host": "127.0.0.1",
+      "ports": [9090],
+      "name": "server2",
+      "client_body_limit_bytes": 2097152,
+      "timeout_seconds": 60,
+      "error_pages": {
+        "400": "errors/400.html",
+        "403": "errors/403.html",
+        "404": "errors/404.html",
+        "500": "errors/500.html"
+      },
+      "routes": [
+        {
+          "path": "/",
+          "methods": ["GET"]
+        },
+        {
+          "path": "/api/info",
+          "methods": ["GET", "POST"]
+        }
+      ],
+      "cgi": {
+        ".py": "/usr/bin/python3"
+      }
     }
-  ],
-  "cgi": {
-    ".py": "/usr/bin/python3",
-    ".php": "/usr/bin/php-cgi"
-  }
-
+  ]
 }
