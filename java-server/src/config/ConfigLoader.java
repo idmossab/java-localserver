@@ -6,6 +6,7 @@ import java.util.Map;
 
 public final class ConfigLoader {
     private final ParsingHandler parser;
+    private ParsingHandler.ServerConfig server;
     private String host;
     private List<Integer> ports;
     private Map<String, List<String>> routes;
@@ -17,9 +18,14 @@ public final class ConfigLoader {
 
     public void load() {
         try {
-            this.host = parser.host;
-            this.ports = new ArrayList<>(parser.ports);
-            this.routes = parser.routes;
+            if (parser.servers == null || parser.servers.isEmpty()) {
+                throw new IllegalArgumentException("no servers found in config");
+            }
+
+            this.server = parser.servers.get(0);
+            this.host = server.host;
+            this.ports = new ArrayList<>(server.ports);
+            this.routes = server.routes;
 
             // System.out.println("ConfigLoader loaded port: " + ports);
         } catch (Exception e) {

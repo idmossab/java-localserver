@@ -6,16 +6,21 @@ import java.util.List;
 import java.util.Map;
 
 public final class ParsingHandler {
+    public static final class ServerConfig {
+        public String host;
+        public List<Integer> ports;
+        public int clientBodyLimitBytes;
+        public Map<String, String> errorPages;
+        public Map<String, List<String>> routes;
+        public Map<String, String> cgi;
+    }
+
     private final String jsonText;
-    public String host;
-    public List<Integer> ports;
-    public int clientBodyLimitBytes;
-    public Map<String, String> errorPages;
-    public Map<String, List<String>> routes;
-    public Map<String, String> cgi;
+    public List<ServerConfig> servers;
 
     public ParsingHandler(String jsonText) {
         this.jsonText = jsonText;
+        this.servers = new ArrayList<>();
         parse();
     }
 
@@ -27,13 +32,33 @@ public final class ParsingHandler {
             }
 
             Map<?, ?> config = (Map<?, ?>) root;
-            host = readHost(config);
-            ports = readPorts(config.get("ports"));
-            clientBodyLimitBytes = readClientBodyLimit(config.get("client_body_limit_bytes"));
-            errorPages = readErrorPages(config.get("error_pages"));
-            routes = readRoutes(config.get("routes"));
-            cgi = readCGI(config.get("cgi"));
-            validateConfig();
+            Object serversValue = config.get("servers");
+            if (!(serversValue instanceof List<?>)) {
+                throw new IllegalArgumentException("servers must be array");
+            }
+
+            List<?> rawServers = (List<?>) serversValue;
+            if (rawServers.isEmpty()) {
+                throw new IllegalArgumentException("servers must not be empty");
+            }
+
+            servers.clear();
+            for (Object serverValue : rawServers) {
+                if (!(serverValue instanceof Map<?, ?>)) {
+                    throw new IllegalArgumentException("each server must be object");
+                }
+
+                Map<?, ?> serverMap = (Map<?, ?>) serverValue;
+                ServerConfig serverConfig = new ServerConfig();
+                serverConfig.host = readHost(serverMap);
+                serverConfig.ports = readPorts(serverMap.get("ports"));
+                serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
+                serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
+                serverConfig.routes = readRoutes(serverMap.get("routes"));
+                serverConfig.cgi = readCGI(serverMap.get("cgi"));
+                validateConfig(serverConfig);
+                servers.add(serverConfig);
+            }
         } catch (Exception e) {
             System.err.println("Parsing error: " + e.getMessage());
             System.exit(1);
@@ -152,16 +177,16 @@ public final class ParsingHandler {
         return map;
     }
 
-    private void validateConfig() {
-        if (!RegexValidator.isValidHost(host)) {
+    private void validateConfig(ServerConfig serverConfig) {
+        if (!RegexValidator.isValidHost(serverConfig.host)) {
             throw new IllegalArgumentException("host format is invalid");
         }
 
-        if (!RegexValidator.isValidPorts(ports)) {
+        if (!RegexValidator.isValidPorts(serverConfig.ports)) {
             throw new IllegalArgumentException("ports are invalid");
         }
 
-        for (Map.Entry<String, List<String>> route : routes.entrySet()) {
+        for (Map.Entry<String, List<String>> route : serverConfig.routes.entrySet()) {
             if (!RegexValidator.isValidPath(route.getKey())) {
                 throw new IllegalArgumentException("route path is invalid: " + route.getKey());
             }

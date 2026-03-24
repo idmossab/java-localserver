@@ -20,31 +20,7 @@ final class JsonParser {
         if (index != text.length()) {
             throw error("extra text after json");
         }
-        return normalizeRootValue(value);
-    }
-
-    private Object normalizeRootValue(Object value) {
-        if (!(value instanceof Map<?, ?>)) {
-            return value;
-        }
-
-        Map<?, ?> root = (Map<?, ?>) value;
-        Object servers = root.get("servers");
-        if (!(servers instanceof List<?>)) {
-            return value;
-        }
-
-        List<?> serverList = (List<?>) servers;
-        if (serverList.isEmpty()) {
-            throw new IllegalArgumentException("servers must not be empty");
-        }
-
-        Object firstServer = serverList.get(0);
-        if (!(firstServer instanceof Map<?, ?>)) {
-            throw new IllegalArgumentException("each server must be object");
-        }
-
-        return firstServer;
+        return value;
     }
 
     private Object parseValue() {
