@@ -20,10 +20,14 @@ public final class Server {
     private final int port;
     private final Router router;
 
-    public Server(ParsingHandler.ServerConfig config, Router router) {
-        this.host = config.host;
-        this.port = config.ports.get(0);
+    public Server(String host, int port, Router router) {
+        this.host = host;
+        this.port = port;
         this.router = router;
+    }
+
+    public Server(ParsingHandler.ServerConfig config, Router router) {
+        this(config.host, config.ports.get(0), router);
     }
 
     public void start() throws IOException {
