@@ -1,6 +1,7 @@
 package server;
 
 import config.ParsingHandler;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +23,7 @@ public final class Main {
 
             List<ParsingHandler.ServerConfig> serverConfigs = configLoader.getServers();
             Set<String> bindings = new HashSet<>();
+            List<Server.Binding> serverBindings = new ArrayList<>();
 
             for (ParsingHandler.ServerConfig serverConfig : serverConfigs) {
                 Router router = new Router("www", serverConfig);
@@ -32,18 +34,11 @@ public final class Main {
                         throw new IllegalArgumentException("Duplicate server binding: " + binding);
                     }
 
-                    Thread serverThread = new Thread(() -> {
-                        try {
-                            new Server(serverConfig.host, port, router).start();
-                        } catch (Exception e) {
-                            throw new RuntimeException("Failed to start server on " + binding, e);
-                        }
-                    });
-
-                    serverThread.setName("server-" + serverConfig.host + "-" + port);
-                    serverThread.start();
+                    serverBindings.add(new Server.Binding(serverConfig.host, port, router));
                 }
             }
+
+            Server.startAll(serverBindings);
         } catch (Exception e) {
             System.err.println("Main error: " + e.getMessage());
             System.exit(1);
