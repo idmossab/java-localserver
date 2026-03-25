@@ -1,4 +1,5 @@
-import config.ConfigLoader;
+package server;
+
 import config.ParsingHandler;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,11 +12,12 @@ public final class Main {
         try {
             String jsonText = Files.readString(Path.of("config.json"));
             ParsingHandler parser = new ParsingHandler(jsonText);
-            ConfigLoader configLoader = new ConfigLoader(parser);
+            config.ConfigLoader configLoader = new config.ConfigLoader(parser);
             configLoader.load();
-            Router router = new Router(configLoader);
-            CGIHandler cgiHandler = new CGIHandler(configLoader);
-            Server server = new Server(configLoader, router, cgiHandler);
+
+            ParsingHandler.ServerConfig serverConfig = configLoader.getServers().get(0);
+            Router router = new Router("www", serverConfig);
+            Server server = new Server(serverConfig, router);
 
             System.out.println("Config file read successfully. Servers: " + parser.servers.size());
             server.start();

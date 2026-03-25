@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: #f0f0f0;
+        }
+        .profile-box {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 300px;
+            text-align: center;
+        }
+        button {
+            padding: 0.7rem 1.5rem;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        button:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+    <div class="profile-box">
+        <h2>Profile 👤</h2>
+        <p id="welcome">Kan7mel...</p>
+        <button onclick="logout()">Logout</button>
+    </div>
+
+    <script>
+        async function checkProfile() {
+            const response = await fetch('/profile');
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('welcome').textContent = 'Welcome ' + data.username + '! 👋';
+            } else {
+                window.location.href = '/login.html';
+            }
+        }
+
+        async function logout() {
+            await fetch('/logout', { method: 'DELETE' });
+            window.location.href = '/login.html';
+        }
+
+        checkProfile();
+    </script>
+</body>
+</html>
