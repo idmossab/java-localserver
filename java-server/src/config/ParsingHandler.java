@@ -9,6 +9,7 @@ public final class ParsingHandler {
     public static final class ServerConfig {
         public String host;
         public List<Integer> ports;
+        public String name;
         public int clientBodyLimitBytes;
         public int timeoutSeconds;
         public Map<String, String> errorPages;
@@ -54,6 +55,7 @@ public final class ParsingHandler {
                 ServerConfig serverConfig = new ServerConfig();
                 serverConfig.host = readHost(serverMap);
                 serverConfig.ports = readPorts(serverMap.get("ports"));
+                serverConfig.name = readName(serverMap.get("name"));
                 serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
                 serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
                 serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
@@ -96,6 +98,13 @@ public final class ParsingHandler {
         return parsedPorts;
     }
 
+    private String readName(Object value) {
+        if (value == null) return null; // name is optional
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException("name must be string");
+        }
+        return (String) value;
+    }
 
     private int readClientBodyLimit(Object value) {
         if (!(value instanceof Integer)) {
