@@ -1,7 +1,7 @@
 {
   "servers": [
     {
-      "host": "0.0.0.0",
+      "host": "",
       "ports": [8080, 8081],
       "name": "server1",
       "client_body_limit_bytes": 1048576,

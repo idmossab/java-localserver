@@ -8,6 +8,10 @@ import java.util.Map;
 import java.util.Set;
 
 public final class ParsingHandler {
+    private static final String DEFAULT_HOST = "127.0.0.1";
+    private static final int DEFAULT_PORT = 8080;
+    private static final String DEFAULT_NAME_PREFIX = "server";
+
     public static final class ServerConfig {
         public String host;
         public List<Integer> ports;
@@ -60,6 +64,10 @@ public final class ParsingHandler {
                 serverConfig.host = readHost(serverMap);
                 serverConfig.ports = readPorts(serverMap.get("ports"));
                 serverConfig.name = readName(serverMap.get("name"));
+                if (serverConfig.name == null) {
+                    serverConfig.name = DEFAULT_NAME_PREFIX + (servers.size() + 1);
+                    System.err.println("Warning: missing field 'name' in server config. Using default value '" + serverConfig.name + "'.");
+                }
                 if (serverConfig.name != null && !seenServerNames.add(serverConfig.name)) {
                     throw new IllegalArgumentException("server names must not be duplicated");
                 }
@@ -79,6 +87,10 @@ public final class ParsingHandler {
 
     private String readHost(Map<?, ?> config) {
         Object value = config.get("host");
+        if (value == null) {
+            System.err.println("Warning: missing field 'host' in server config. Using default value '" + DEFAULT_HOST + "'.");
+            return DEFAULT_HOST;
+        }
         if (!(value instanceof String)) {
             throw new IllegalArgumentException("host must be string");
         }
@@ -104,6 +116,12 @@ public final class ParsingHandler {
     }
 
     private List<Integer> readPorts(Object value) {
+        if (value == null) {
+            ArrayList<Integer> defaultPorts = new ArrayList<>();
+            defaultPorts.add(DEFAULT_PORT);
+            System.err.println("Warning: missing field 'ports' in server config. Using default value '" + defaultPorts + "'.");
+            return defaultPorts;
+        }
         if (!(value instanceof List<?>)) {
             throw new IllegalArgumentException("ports must be array");
         }
@@ -129,7 +147,7 @@ public final class ParsingHandler {
     }
 
     private String readName(Object value) {
-        if (value == null) return null; // name is optional
+        if (value == null) return null;
         if (!(value instanceof String)) {
             throw new IllegalArgumentException("name must be string");
         }
