@@ -55,6 +55,7 @@
       ],
       "cgi": {
         ".py": "/usr/bin/python3"
+        
       }
     }
   ]

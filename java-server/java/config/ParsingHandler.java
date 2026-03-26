@@ -55,6 +55,7 @@ public final class ParsingHandler {
                 }
 
                 Map<?, ?> serverMap = (Map<?, ?>) serverValue;
+                checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "error_pages", "routes", "cgi"), "server config");
                 ServerConfig serverConfig = new ServerConfig();
                 serverConfig.host = readHost(serverMap);
                 serverConfig.ports = readPorts(serverMap.get("ports"));
@@ -188,6 +189,7 @@ public final class ParsingHandler {
             }
 
             Map<?, ?> routeMap = (Map<?, ?>) obj;
+            checkUnknownKeys(routeMap, Set.of("path", "methods"), "route config");
 
             Object pathObj = routeMap.get("path");
             Object methodsObj = routeMap.get("methods");
@@ -216,6 +218,14 @@ public final class ParsingHandler {
         }
 
         return map;
+    }
+
+    private void checkUnknownKeys(Map<?, ?> obj, Set<String> allowedKeys, String context) {
+        for (Object key : obj.keySet()) {
+            if (key instanceof String && !allowedKeys.contains(key)) {
+                System.err.println("Warning: unknown field '" + key + "' in " + context + ". It will be ignored.");
+            }
+        }
     }
 
     private Map<String, String> readCGI(Object value) {
