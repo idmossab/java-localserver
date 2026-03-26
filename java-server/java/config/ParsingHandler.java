@@ -75,7 +75,25 @@ public final class ParsingHandler {
         if (!(value instanceof String)) {
             throw new IllegalArgumentException("host must be string");
         }
-        return (String) value;
+        String host = (String) value;
+        String[] parts = host.split("\\.");
+
+        if (parts.length != 4) {
+            throw new IllegalArgumentException("host must be valid IPv4");
+        }
+
+        for (String part : parts) {
+            try {
+                int number = Integer.parseInt(part);
+                if (number < 0 || number > 255) {
+                    throw new IllegalArgumentException("host octets must be between 0 and 255");
+                }
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("host must contain only numbers separated by dots");
+            }
+        }
+
+        return host;
     }
 
     private List<Integer> readPorts(Object value) {
@@ -130,7 +148,17 @@ public final class ParsingHandler {
             if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
                 throw new IllegalArgumentException("error_pages keys and values must be strings");
             }
-            pages.put((String) entry.getKey(), (String) entry.getValue());
+            String code = (String) entry.getKey();
+            String path = (String) entry.getValue();
+
+            if (!RegexValidator.isValidErrorPageCode(code)) {
+                throw new IllegalArgumentException("error_pages code is invalid: " + code);
+            }
+            if (!RegexValidator.isValidErrorPagePath(path)) {
+                throw new IllegalArgumentException("error_pages path is invalid for code " + code + ": " + path);
+            }
+
+            pages.put(code, path);
         }
         return pages;
     }
