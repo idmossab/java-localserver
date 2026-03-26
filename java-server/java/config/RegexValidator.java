@@ -11,6 +11,10 @@ public final class RegexValidator {
         "^(400|403|404|405|413|500)$";
     public static final String ERROR_PAGE_PATH_REGEX =
         "^errors/[A-Za-z0-9._/-]+\\.html$";
+    public static final String CGI_EXTENSION_REGEX =
+        "^\\.[A-Za-z0-9]+$";
+    public static final String CGI_EXECUTABLE_PATH_REGEX =
+        "^/[A-Za-z0-9._/-]+$";
 
     private RegexValidator() {
         // private constructor =>  instance
@@ -67,6 +71,18 @@ public final class RegexValidator {
     public static boolean isValidErrorPagePath(String path) {
         if (path == null || path.isEmpty()) return false;
         if (path.contains("..")) return false;
+        if (!path.endsWith(".html")) return false;
         return path.matches(ERROR_PAGE_PATH_REGEX);
+    }
+
+    public static boolean isValidCGIExtension(String extension) {
+        if (extension == null || extension.isEmpty()) return false;
+        return extension.matches(CGI_EXTENSION_REGEX);
+    }
+
+    public static boolean isValidCGIExecutablePath(String path) {
+        if (path == null || path.isEmpty()) return false;
+        if (path.contains("..")) return false;
+        return path.matches(CGI_EXECUTABLE_PATH_REGEX);
     }
 }

@@ -230,7 +230,17 @@ public final class ParsingHandler {
             if (!(entry.getKey() instanceof String) || !(entry.getValue() instanceof String)) {
                 throw new IllegalArgumentException("cgi keys and values must be strings");
             }
-            map.put((String) entry.getKey(), (String) entry.getValue());
+            String extension = (String) entry.getKey();
+            String path = (String) entry.getValue();
+
+            if (!RegexValidator.isValidCGIExtension(extension)) {
+                throw new IllegalArgumentException("cgi extension is invalid: " + extension);
+            }
+            if (!RegexValidator.isValidCGIExecutablePath(path)) {
+                throw new IllegalArgumentException("cgi path is invalid for extension " + extension + ": " + path);
+            }
+
+            map.put(extension, path);
         }
 
         return map;
