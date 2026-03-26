@@ -55,32 +55,37 @@ public final class ParsingHandler {
 
             servers.clear();
             Set<String> seenServerNames = new HashSet<>();
-            for (Object serverValue : rawServers) {
+            for (int i = 0; i < rawServers.size(); i++) {
+                Object serverValue = rawServers.get(i);
                 if (!(serverValue instanceof Map<?, ?>)) {
                     throw new IllegalArgumentException("each server must be object");
                 }
 
-                Map<?, ?> serverMap = (Map<?, ?>) serverValue;
-                checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "error_pages", "routes", "cgi"), "server config");
-                ServerConfig serverConfig = new ServerConfig();
-                serverConfig.host = readHost(serverMap);
-                serverConfig.ports = readPorts(serverMap.get("ports"));
-                serverConfig.name = readName(serverMap.get("name"));
-                if (serverConfig.name == null) {
-                    serverConfig.name = DEFAULT_NAME_PREFIX + (servers.size() + 1);
-                    System.err.println("Warning: missing field 'name' in server config. Using default value '" + serverConfig.name + "'.");
+                try {
+                    Map<?, ?> serverMap = (Map<?, ?>) serverValue;
+                    checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "error_pages", "routes", "cgi"), "server config");
+                    ServerConfig serverConfig = new ServerConfig();
+                    serverConfig.host = readHost(serverMap);
+                    serverConfig.ports = readPorts(serverMap.get("ports"));
+                    serverConfig.name = readName(serverMap.get("name"));
+                    if (serverConfig.name == null) {
+                        serverConfig.name = DEFAULT_NAME_PREFIX + (servers.size() + 1);
+                        System.err.println("Warning: missing field 'name' in server config. Using default value '" + serverConfig.name + "'.");
+                    }
+                    if (serverConfig.name != null && !seenServerNames.add(serverConfig.name)) {
+                        throw new IllegalArgumentException("server names must not be duplicated");
+                    }
+                    serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
+                    serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
+                    serverConfig.rootDirectory = readRootDirectory(serverMap.get("root_directory"));
+                    serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
+                    serverConfig.routes = readRoutes(serverMap.get("routes"));
+                    serverConfig.cgi = readCGI(serverMap.get("cgi"));
+                    validateConfig(serverConfig);
+                    servers.add(serverConfig);
+                } catch (Exception e) {
+                    System.err.println("Warning in server index " + i + ": " + e.getMessage());
                 }
-                if (serverConfig.name != null && !seenServerNames.add(serverConfig.name)) {
-                    throw new IllegalArgumentException("server names must not be duplicated");
-                }
-                serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
-                serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
-                serverConfig.rootDirectory = readRootDirectory(serverMap.get("root_directory"));
-                serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
-                serverConfig.routes = readRoutes(serverMap.get("routes"));
-                serverConfig.cgi = readCGI(serverMap.get("cgi"));
-                validateConfig(serverConfig);
-                servers.add(serverConfig);
             }
         } catch (Exception e) {
             System.err.println("Parsing error: " + e.getMessage());
