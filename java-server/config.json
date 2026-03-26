@@ -1,12 +1,12 @@
 {
   "servers": [
     {
-      "host": "0.0.0.0",
-      "ports": [8080],
+      "host": "127.0.0.1",
+      "ports": [8080, 8080],
       "name": "server1",
-      "default": true,
       "client_body_limit_bytes": 1048576,
       "timeout_seconds": 30,
+      "root_directory": "www",
       "error_pages": {
         "400": "errors/400.html",
         "403": "errors/403.html",
@@ -31,11 +31,12 @@
       }
     },
     {
-      "host": "0.0.0.0",
+      "host": "127.0.0.2",
       "ports": [8080],
       "name": "server2",
       "client_body_limit_bytes": 2097152,
       "timeout_seconds": 60,
+      "root_directory": "www",
       "error_pages": {
         "400": "errors/400.html",
         "403": "errors/403.html",

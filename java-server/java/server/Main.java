@@ -26,7 +26,7 @@ public final class Main {
             List<Server.Binding> serverBindings = new ArrayList<>();
 
             for (ParsingHandler.ServerConfig serverConfig : serverConfigs) {
-                Router router = new Router("www", serverConfig);
+                Router router = new Router(serverConfig.rootDirectory, serverConfig);
 
                 for (Integer port : serverConfig.ports) {
                     String binding = serverConfig.name + " - " + serverConfig.host + ":" + port;

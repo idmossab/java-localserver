@@ -6,18 +6,24 @@ public final class RegexValidator {
 
     // constants  regex
     public static final String IPV4_REGEX =
-        "^((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)(\\.|$)){4}$";
-    public static final String HOSTNAME_REGEX =
-        "^[a-zA-Z0-9.-]+$";
+        "^((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)$";
+    public static final String ERROR_PAGE_CODE_REGEX =
+        "^(400|403|404|405|413|500)$";
+    public static final String ERROR_PAGE_PATH_REGEX =
+        "^errors/[A-Za-z0-9._/-]+\\.html$";
+    public static final String CGI_EXTENSION_REGEX =
+        "^\\.[A-Za-z0-9]+$";
+    public static final String CGI_EXECUTABLE_PATH_REGEX =
+        "^/[A-Za-z0-9._/-]+$";
 
     private RegexValidator() {
         // private constructor =>  instance
     }
 
-    // validate host (IPv4  hostname)
+    // validate host (exact IPv4 only)
     public static boolean isValidHost(String host) {
         if (host == null) return false;
-        return host.matches(IPV4_REGEX) || host.matches(HOSTNAME_REGEX);
+        return host.matches(IPV4_REGEX);
     }
 
     // validate ports list
@@ -55,5 +61,28 @@ public final class RegexValidator {
             }
         }
         return true;
+    }
+
+    public static boolean isValidErrorPageCode(String code) {
+        if (code == null) return false;
+        return code.matches(ERROR_PAGE_CODE_REGEX);
+    }
+
+    public static boolean isValidErrorPagePath(String path) {
+        if (path == null || path.isEmpty()) return false;
+        if (path.contains("..")) return false;
+        if (!path.endsWith(".html")) return false;
+        return path.matches(ERROR_PAGE_PATH_REGEX);
+    }
+
+    public static boolean isValidCGIExtension(String extension) {
+        if (extension == null || extension.isEmpty()) return false;
+        return extension.matches(CGI_EXTENSION_REGEX);
+    }
+
+    public static boolean isValidCGIExecutablePath(String path) {
+        if (path == null || path.isEmpty()) return false;
+        if (path.contains("..")) return false;
+        return path.matches(CGI_EXECUTABLE_PATH_REGEX);
     }
 }
