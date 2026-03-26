@@ -2,8 +2,10 @@ package config;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class ParsingHandler {
     public static final class ServerConfig {
@@ -46,6 +48,7 @@ public final class ParsingHandler {
             }
 
             servers.clear();
+            Set<String> seenServerNames = new HashSet<>();
             for (Object serverValue : rawServers) {
                 if (!(serverValue instanceof Map<?, ?>)) {
                     throw new IllegalArgumentException("each server must be object");
@@ -56,6 +59,9 @@ public final class ParsingHandler {
                 serverConfig.host = readHost(serverMap);
                 serverConfig.ports = readPorts(serverMap.get("ports"));
                 serverConfig.name = readName(serverMap.get("name"));
+                if (serverConfig.name != null && !seenServerNames.add(serverConfig.name)) {
+                    throw new IllegalArgumentException("server names must not be duplicated");
+                }
                 serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
                 serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
                 serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
@@ -107,11 +113,16 @@ public final class ParsingHandler {
         }
 
         ArrayList<Integer> parsedPorts = new ArrayList<>();
+        Set<Integer> seenPorts = new HashSet<>();
         for (Object port : rawPorts) {
             if (!(port instanceof Integer)) {
                 throw new IllegalArgumentException("ports must contain only numbers");
             }
-            parsedPorts.add((Integer) port);
+            Integer portNumber = (Integer) port;
+            if (!seenPorts.add(portNumber)) {
+                throw new IllegalArgumentException("ports must not contain duplicate numbers");
+            }
+            parsedPorts.add(portNumber);
         }
         return parsedPorts;
     }
