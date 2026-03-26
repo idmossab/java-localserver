@@ -11,6 +11,7 @@ public final class ParsingHandler {
     private static final String DEFAULT_HOST = "127.0.0.1";
     private static final int DEFAULT_PORT = 8080;
     private static final String DEFAULT_NAME_PREFIX = "server";
+    private static final String DEFAULT_ROOT_DIRECTORY = "www";
 
     public static final class ServerConfig {
         public String host;
@@ -18,6 +19,7 @@ public final class ParsingHandler {
         public String name;
         public int clientBodyLimitBytes;
         public int timeoutSeconds;
+        public String rootDirectory;
         public Map<String, String> errorPages;
         public Map<String, List<String>> routes;
         public Map<String, String> cgi;
@@ -59,7 +61,7 @@ public final class ParsingHandler {
                 }
 
                 Map<?, ?> serverMap = (Map<?, ?>) serverValue;
-                checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "error_pages", "routes", "cgi"), "server config");
+                checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "error_pages", "routes", "cgi"), "server config");
                 ServerConfig serverConfig = new ServerConfig();
                 serverConfig.host = readHost(serverMap);
                 serverConfig.ports = readPorts(serverMap.get("ports"));
@@ -73,6 +75,7 @@ public final class ParsingHandler {
                 }
                 serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
                 serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
+                serverConfig.rootDirectory = readRootDirectory(serverMap.get("root_directory"));
                 serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
                 serverConfig.routes = readRoutes(serverMap.get("routes"));
                 serverConfig.cgi = readCGI(serverMap.get("cgi"));
@@ -166,6 +169,17 @@ public final class ParsingHandler {
             throw new IllegalArgumentException("set_timeout_seconds must be number");
         }
         return (Integer) value;
+    }
+
+    private String readRootDirectory(Object value) {
+        if (value == null) {
+            System.err.println("Warning: missing field 'root_directory' in server config. Using default value '" + DEFAULT_ROOT_DIRECTORY + "'.");
+            return DEFAULT_ROOT_DIRECTORY;
+        }
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException("root_directory must be string");
+        }
+        return (String) value;
     }
 
     private Map<String, String> readErrorPages(Object value) {
