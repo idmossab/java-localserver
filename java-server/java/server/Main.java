@@ -1,12 +1,12 @@
 package server;
 
 import config.ParsingHandler;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 public final class Main {
     private Main() {
@@ -29,12 +29,12 @@ public final class Main {
                 Router router = new Router("www", serverConfig);
 
                 for (Integer port : serverConfig.ports) {
-                    String binding = serverConfig.host + ":" + port;
+                    String binding = serverConfig.name + " - " + serverConfig.host + ":" + port;
                     if (!bindings.add(binding)) {
-                        throw new IllegalArgumentException("Duplicate server binding: " + binding);
+                        throw new IllegalArgumentException("Duplicate binding detected: " + binding);
                     }
 
-                    serverBindings.add(new Server.Binding(serverConfig.host, port, router));
+                    serverBindings.add(new Server.Binding(serverConfig.name, serverConfig.host, port, router));
                 }
             }
 

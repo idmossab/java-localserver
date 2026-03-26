@@ -1,5 +1,7 @@
 # Compiled
 out/
+build/
+target/
 
 # Uploads
 www/uploads/

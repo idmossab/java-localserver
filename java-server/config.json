@@ -2,8 +2,9 @@
   "servers": [
     {
       "host": "0.0.0.0",
-      "ports": [8080, 8081],
+      "ports": [8080],
       "name": "server1",
+      "default": true,
       "client_body_limit_bytes": 1048576,
       "timeout_seconds": 30,
       "error_pages": {
@@ -30,8 +31,8 @@
       }
     },
     {
-      "host": "127.0.0.1",
-      "ports": [9090],
+      "host": "0.0.0.0",
+      "ports": [8080],
       "name": "server2",
       "client_body_limit_bytes": 2097152,
       "timeout_seconds": 60,
