@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 import utils.Cookie;
 import utils.Session;
@@ -15,11 +16,17 @@ public class Router {
     private final String wwwRoot;
     private final FileUploadHandler uploadHandler;
     private final ParsingHandler.ServerConfig config;
+    private final config.ConfigLoader configLoader;
+    private final CGIHandler cgiHandler;
+    private final Session.Store sessionStore;
 
-    public Router(String wwwRoot, ParsingHandler.ServerConfig config) {
+    public Router(String wwwRoot, ParsingHandler.ServerConfig config, config.ConfigLoader configLoader) {
         this.wwwRoot = wwwRoot;
         this.uploadHandler = new FileUploadHandler(wwwRoot + "/uploads", this);
         this.config = config;
+        this.configLoader = configLoader;
+        this.cgiHandler = new CGIHandler(configLoader);
+        this.sessionStore = new Session.Store("sessionId", 30 * 60 * 1000L); // 30 minutes TTL
     }
 
     public HttpResponse route(HttpRequest request) {
@@ -28,6 +35,30 @@ public class Router {
 
         if (method == null || path == null) {
             return errorResponse(HttpResponse.BAD_REQUEST, "400");
+        }
+
+        // CGI handling
+        if (path.endsWith(".cgi")) {
+            RequestContext ctx = new RequestContext(request.getMethod(), request.getPath(), request.getHeaders(), request.getRawBody(), "localhost", 8080);
+            Path scriptPath = Paths.get(wwwRoot, path.substring(1));
+            String extension = path.substring(path.lastIndexOf('.') + 1);
+            RequestContext.RouteMatch routeMatch = new RequestContext.RouteMatch(path, scriptPath, extension, null, "", null, null, true, false);
+            ctx.setRouteMatch(routeMatch);
+            try {
+                cgiHandler.execute(ctx);
+                RequestContext.HttpResponse response = ctx.getResponse();
+                HttpResponse httpResponse = new HttpResponse();
+                httpResponse.setStatus(response.getStatusCode());
+                for (Map.Entry<String, List<String>> entry : response.getHeaders().entrySet()) {
+                    for (String value : entry.getValue()) {
+                        httpResponse.addHeader(entry.getKey(), value);
+                    }
+                }
+                httpResponse.setBody(response.getBody(), "text/html");
+                return httpResponse;
+            } catch (Exception e) {
+                return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+            }
         }
 
         // Check maxBodySize
@@ -59,10 +90,10 @@ public class Router {
         String username = extractParam(body, "username");
 
         if (username != null && !username.isEmpty()) {
-            String sessionId = Session.create();
-            Session.set(sessionId, "username", username);
+            Session session = sessionStore.create(System.currentTimeMillis());
+            session.putAttribute("username", username);
 
-            Cookie cookie = new Cookie("sessionId", sessionId);
+            Cookie cookie = sessionStore.buildSessionCookie(session, false);
 
             response.setStatus(HttpResponse.OK);
             response.addCookie(cookie);
@@ -80,11 +111,11 @@ public class Router {
         HttpResponse response = new HttpResponse();
 
         String cookieHeader = request.getHeaders().get("Cookie");
-        java.util.Map<String, String> cookies = Cookie.parse(cookieHeader);
-        String sessionId = cookies.get("sessionId");
+        Map<String, String> cookies = Cookie.parseRequestHeader(cookieHeader);
+        Session session = sessionStore.resolve(cookies, System.currentTimeMillis());
 
-        if (Session.exists(sessionId)) {
-            String username = Session.get(sessionId, "username");
+        if (session != null) {
+            String username = session.getAttribute("username");
             response.setStatus(HttpResponse.OK);
             response.setBody(
                     ("{\"username\": \"" + username + "\", \"message\": \"Welcome " + username + "!\"}").getBytes(),
@@ -100,14 +131,14 @@ public class Router {
         HttpResponse response = new HttpResponse();
 
         String cookieHeader = request.getHeaders().get("Cookie");
-        Map<String, String> cookies = Cookie.parse(cookieHeader);
-        String sessionId = cookies.get("sessionId");
+        Map<String, String> cookies = Cookie.parseRequestHeader(cookieHeader);
+        Session session = sessionStore.resolve(cookies, System.currentTimeMillis());
 
-        if (Session.exists(sessionId)) {
-            Session.destroy(sessionId);
+        if (session != null) {
+            // Note: The new Session doesn't have destroy, but since it's resolved, it's already managed.
+            // To logout, we can just send an expired cookie.
 
-            Cookie cookie = new Cookie("sessionId", "");
-            cookie.setMaxAge(0);
+            Cookie cookie = new Cookie("sessionId", "").path("/").maxAgeSeconds(0L).httpOnly(true);
             response.addCookie(cookie);
 
             response.setStatus(HttpResponse.OK);

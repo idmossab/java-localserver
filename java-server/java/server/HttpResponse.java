@@ -79,6 +79,6 @@ public class HttpResponse {
     }
 
     public void addCookie(Cookie cookie) {
-        headers.put("Set-Cookie", cookie.toHeaderValue());
+        headers.put("Set-Cookie", cookie.toSetCookieHeader());
     }
 }
