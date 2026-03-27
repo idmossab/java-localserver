@@ -17,7 +17,7 @@ public final class ParsingHandler {
         public String host;
         public List<Integer> ports;
         public String name;
-        public int clientBodyLimitBytes;
+        public long clientBodyLimitBytes;
         public int timeoutSeconds;
         public String rootDirectory;
         public Map<String, String> errorPages;
@@ -62,8 +62,10 @@ public final class ParsingHandler {
                 }
 
                 try {
+                    System.out.println("Parsing server config index " + i);
                     Map<?, ?> serverMap = (Map<?, ?>) serverValue;
                     checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "error_pages", "routes", "cgi"), "server config");
+                    System.out.println("Checked unknown keys for server config index " + i);
                     ServerConfig serverConfig = new ServerConfig();
                     serverConfig.host = readHost(serverMap);
                     serverConfig.ports = readPorts(serverMap.get("ports"));
@@ -76,6 +78,7 @@ public final class ParsingHandler {
                         throw new IllegalArgumentException("server names must not be duplicated");
                     }
                     serverConfig.clientBodyLimitBytes = readClientBodyLimit(serverMap.get("client_body_limit_bytes"));
+                    
                     serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
                     serverConfig.rootDirectory = readRootDirectory(serverMap.get("root_directory"));
                     serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
@@ -142,10 +145,14 @@ public final class ParsingHandler {
         ArrayList<Integer> parsedPorts = new ArrayList<>();
         Set<Integer> seenPorts = new HashSet<>();
         for (Object port : rawPorts) {
-            if (!(port instanceof Integer)) {
+            if (!(port instanceof Number)) {
                 throw new IllegalArgumentException("ports must contain only numbers");
             }
-            Integer portNumber = (Integer) port;
+            long rawPort = ((Number) port).longValue();
+            if (rawPort < 1 || rawPort > 65535) {
+                throw new IllegalArgumentException("port must be between 1 and 65535");
+            }
+            int portNumber = (int) rawPort;
             if (!seenPorts.add(portNumber)) {
                 throw new IllegalArgumentException("ports must not contain duplicate numbers");
             }
@@ -162,18 +169,26 @@ public final class ParsingHandler {
         return (String) value;
     }
 
-    private int readClientBodyLimit(Object value) {
-        if (!(value instanceof Integer)) {
+    private long readClientBodyLimit(Object value) {
+        if (!(value instanceof Number)) {
             throw new IllegalArgumentException("client_body_limit_bytes must be number");
         }
-        return (Integer) value;
+        long clientBodyLimitBytes = ((Number) value).longValue();
+        if (clientBodyLimitBytes < 0) {
+            throw new IllegalArgumentException("client_body_limit_bytes must be >= 0");
+        }
+        return clientBodyLimitBytes;
     }
 
     private int readTimeoutSeconds(Object value) {
-        if (!(value instanceof Integer)) {
+        if (!(value instanceof Number)) {
             throw new IllegalArgumentException("set_timeout_seconds must be number");
         }
-        return (Integer) value;
+        long timeout = ((Number) value).longValue();
+        if (timeout > Integer.MAX_VALUE || timeout < Integer.MIN_VALUE) {
+            throw new IllegalArgumentException("timeout_seconds is out of range");
+        }
+        return (int) timeout;
     }
 
     private String readRootDirectory(Object value) {

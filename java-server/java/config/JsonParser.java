@@ -170,7 +170,7 @@ final class JsonParser {
         throw error("invalid null");
     }
 
-    private Integer parseNumber() {
+    private Long parseNumber() {
         int start = index;
 
         if (peek('-')) {
@@ -186,7 +186,11 @@ final class JsonParser {
             throw error("only integer numbers are allowed");
         }
 
-        return Integer.parseInt(text.substring(start, index));
+        try {
+            return Long.parseLong(text.substring(start, index));
+        } catch (NumberFormatException e) {
+            throw error("number is out of range");
+        }
     }
 
     private void skipWhitespace() {

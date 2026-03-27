@@ -2,9 +2,9 @@
   "servers": [
     {
       "host": "127.0.0.1",
-      "ports": [8080, 8080],
-      "name": "server1",
-      "client_body_limit_bytes": 1048576,
+      "ports": [8080],
+      "name": "s1",
+      "client_body_limit_bytes": 1245421000,
       "timeout_seconds": 30,
       "root_directory": "www",
       "error_pages": {
@@ -21,8 +21,24 @@
           "methods": ["GET"]
         },
         {
-          "path": "/api/data",
-          "methods": ["GET", "POST", "DELETE"]
+          "path": "/login",
+          "methods": ["POST"]
+        },
+        {
+          "path": "/profile",
+          "methods": ["GET"]
+        },
+        {
+          "path": "/logout",
+          "methods": ["DELETE"]
+        },
+        {
+          "path": "/upload",
+          "methods": ["POST"]
+        },
+        {
+          "path": "/uploads",
+          "methods": ["GET", "DELETE"]
         }
       ],
       "cgi": {
@@ -31,9 +47,9 @@
       }
     },
     {
-      "host": "127.0.0.2",
+      "host": "127.0.0.1",
       "ports": [8080],
-      "name": "server2",
+      "name": "localhost",
       "client_body_limit_bytes": 2097152,
       "timeout_seconds": 60,
       "root_directory": "www",
@@ -51,8 +67,24 @@
           "methods": ["GET"]
         },
         {
-          "path": "/api/info",
-          "methods": ["GET", "POST"]
+          "path": "/login",
+          "methods": ["POST"]
+        },
+        {
+          "path": "/profile",
+          "methods": ["GET"]
+        },
+        {
+          "path": "/logout",
+          "methods": ["DELETE"]
+        },
+        {
+          "path": "/upload",
+          "methods": ["POST"]
+        },
+        {
+          "path": "/uploads",
+          "methods": ["GET", "DELETE"]
         }
       ],
       "cgi": {
