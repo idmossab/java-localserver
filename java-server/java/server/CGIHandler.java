@@ -34,7 +34,6 @@ public final class CGIHandler {
             }
 
             Path scriptPath = requireReadableScript(routeMatch.getScriptPath());
-            System.out.println("Executing CGI script: " + scriptPath);
             String extension = requireExtension(routeMatch.getCgiExtension(), scriptPath);
             String interpreter = config.getCgiInterpreter(extension);
             if (interpreter == null || interpreter.isBlank()) {

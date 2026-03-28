@@ -72,17 +72,14 @@ public final class ParsingHandler {
                 }
 
                 try {
-                    System.out.println("Parsing server config index " + i);
                     Map<?, ?> serverMap = (Map<?, ?>) serverValue;
                     checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "default_file", "autoindex", "error_pages", "routes", "cgi", "cgi_root"), "server config");
-                    System.out.println("Checked unknown keys for server config index " + i);
                     ServerConfig serverConfig = new ServerConfig();
                     serverConfig.host = readHost(serverMap);
                     serverConfig.ports = readPorts(serverMap.get("ports"));
                     serverConfig.name = readName(serverMap.get("name"));
                     if (serverConfig.name == null) {
                         serverConfig.name = DEFAULT_NAME_PREFIX + (servers.size() + 1);
-                        System.err.println("Warning: missing field 'name' in server config. Using default value '" + serverConfig.name + "'.");
                     }
                     if (serverConfig.name != null && !seenServerNames.add(serverConfig.name)) {
                         throw new IllegalArgumentException("server names must not be duplicated");
@@ -99,7 +96,6 @@ public final class ParsingHandler {
                     serverConfig.cgiRoot = readString(serverMap.get("cgi_root"));
                     validateConfig(serverConfig);
                     servers.add(serverConfig);
-                    System.out.println(serverConfig.defaultFile);
                 } catch (Exception e) {
                     System.err.println("Warning in server index " + i + ": " + e.getMessage());
                 }
@@ -218,7 +214,7 @@ public final class ParsingHandler {
 
     private String readDefaultFile(Object value) {
         if (value == null) {
-            return "index.html"; // Default default file
+            return ""; // Default default file
         }
         if (!(value instanceof String)) {
             throw new IllegalArgumentException("default_file must be string");

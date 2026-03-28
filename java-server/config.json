@@ -9,15 +9,14 @@
       "routes": [
         {
           "path": "/",
-          "methods": ["GET"],
-          "root_directory": "root",
+          "methods": ["GET", "POST"],
+          "root_directory": "www",
           "autoindex": true
         },
         {
           "path": "/best",
           "methods": ["GET"],
           "root_directory": "www",
-          "default_file": "index.html",
           "autoindex": true
         }
       ],

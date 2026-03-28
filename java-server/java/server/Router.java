@@ -238,28 +238,29 @@ public class Router {
         if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
         if (relativePath.isEmpty()) relativePath = "";
         Path filePath = Path.of(effectiveRoot).resolve(relativePath);
-        System.out.println("Effective root: " + effectiveRoot + ", Route path: " + routeMatch.path + ", Requested path: " + path + ", Relative path: " + relativePath + ", Resolved file path: " + filePath);
 
-        // Handle directory fallback using route or server default file
+        // Handle directory fallback using route or server default file (default_file has priority)
         if (Files.isDirectory(filePath)) {
+            String routeDefault = routeMatch.routeConfig.defaultFile != null ? routeMatch.routeConfig.defaultFile : config.defaultFile;
+            if (routeDefault != null) {
+                Path indexFilePath = filePath.resolve(routeDefault);
+                if (Files.exists(indexFilePath) && !Files.isDirectory(indexFilePath)) {
+                    try {
+                        byte[] content = Files.readAllBytes(indexFilePath);
+                        String mimeType = getMimeType(routeDefault);
+
+                        response.setStatus(HttpResponse.OK);
+                        response.setBody(content, mimeType);
+                        return response;
+                    } catch (IOException e) {
+                        return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+                    }
+                }
+            }
+
             boolean allowAutoindex = routeMatch.routeConfig.autoindex || config.autoindex;
             if (allowAutoindex) {
                 return generateDirectoryListing(filePath, path, effectiveRoot);
-            }
-
-            String routeDefault = routeMatch.routeConfig.defaultFile != null ? routeMatch.routeConfig.defaultFile : config.defaultFile;
-            Path indexFilePath = filePath.resolve(routeDefault);
-            if (routeDefault != null && Files.exists(indexFilePath) && !Files.isDirectory(indexFilePath)) {
-                try {
-                    byte[] content = Files.readAllBytes(indexFilePath);
-                    String mimeType = getMimeType(routeDefault);
-
-                    response.setStatus(HttpResponse.OK);
-                    response.setBody(content, mimeType);
-                    return response;
-                } catch (IOException e) {
-                    return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
-                }
             }
 
             return errorResponse(HttpResponse.NOT_FOUND, "404");
@@ -306,8 +307,13 @@ public class Router {
 
             // Add parent directory link if not root
             if (!requestPath.equals("/")) {
-                String parentPath = requestPath.substring(0, requestPath.lastIndexOf('/'));
-                if (parentPath.isEmpty()) parentPath = "/";
+                int lastSlash = requestPath.lastIndexOf('/');
+                String parentPath;
+                if (lastSlash > 0) {
+                    parentPath = requestPath.substring(0, lastSlash);
+                } else {
+                    parentPath = "/";
+                }
                 html.append("<li><a href=\"").append(parentPath).append("\">../</a></li>\n");
             }
 

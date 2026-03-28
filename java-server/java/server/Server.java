@@ -105,8 +105,6 @@ public final class Server {
 
             serverChannels.add(serverChannel);
 
-            System.out.println("Server group started on " + host + ":" + port +
-                    " (" + samePortBindings.size() + " servers)");
         }
     }
 
@@ -120,7 +118,7 @@ public final class Server {
             while (iter.hasNext()) {
                 SelectionKey key = iter.next();
                 iter.remove();
-                
+
                 if (key.isAcceptable()) {
                     handleAccept(key, selector);
                 } else if (key.isReadable()) {

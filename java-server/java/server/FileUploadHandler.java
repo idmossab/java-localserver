@@ -3,10 +3,12 @@ package server;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
+import java.security.SecureRandom;
 
 public class FileUploadHandler {
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final String uploadDir;
     private final Router router;
@@ -22,7 +24,9 @@ public class FileUploadHandler {
         if (contentType == null || !contentType.contains("multipart/form-data")) {
             HttpResponse response = new HttpResponse();
             response.setStatus(HttpResponse.BAD_REQUEST);
-            response.setBody("{\"error\": \"Content-Type khasso ykun multipart/form-data\"}".getBytes(StandardCharsets.UTF_8), "application/json");
+            response.setBody(
+                    "{\"error\": \"Content-Type must be multipart/form-data\"}".getBytes(StandardCharsets.UTF_8),
+                    "application/json");
             return response;
         }
 
@@ -30,7 +34,7 @@ public class FileUploadHandler {
         if (boundary == null) {
             HttpResponse response = new HttpResponse();
             response.setStatus(HttpResponse.BAD_REQUEST);
-            response.setBody("{\"error\": \"Boundary malsqa\"}".getBytes(StandardCharsets.UTF_8), "application/json");
+            response.setBody("{\"error\": \"Boundary missing\"}".getBytes(StandardCharsets.UTF_8), "application/json");
             return response;
         }
 
@@ -52,64 +56,91 @@ public class FileUploadHandler {
     private HttpResponse parseMultipartBytes(byte[] body, String boundary) {
         HttpResponse response = new HttpResponse();
 
-        byte[] boundaryBytes  = ("--" + boundary).getBytes(StandardCharsets.UTF_8);
-        byte[] headerEnd      = "\r\n\r\n".getBytes(StandardCharsets.UTF_8);
+        byte[] boundaryBytes = ("--" + boundary).getBytes(StandardCharsets.UTF_8);
+        byte[] closingBoundaryBytes = ("--" + boundary + "--").getBytes(StandardCharsets.UTF_8);
+        byte[] headerEnd = "\r\n\r\n".getBytes(StandardCharsets.UTF_8);
 
         int fileSaved = 0;
-        int pos       = 0;
+        int pos = 0;
 
         while (pos < body.length) {
-            // Find boundary
+            // Find boundary (normal or closing)
             int boundaryPos = indexOf(body, boundaryBytes, pos);
-            if (boundaryPos == -1) break;
+            if (boundaryPos == -1) {
+                break;
+            }
 
             pos = boundaryPos + boundaryBytes.length;
 
-            // Skip \r\n b3d boundary
-            if (pos + 2 <= body.length &&
-                body[pos] == '\r' && body[pos + 1] == '\n') {
+            // If closing boundary, stop
+            if (pos + 2 <= body.length && body[pos] == '-' && body[pos + 1] == '-') {
+                break;
+            }
+
+            // Skip CRLF after boundary
+            if (pos + 2 <= body.length && body[pos] == '\r' && body[pos + 1] == '\n') {
                 pos += 2;
             } else {
-                break; // End boundary
+                break;
             }
 
             // Find end of headers
             int headerEndPos = indexOf(body, headerEnd, pos);
-            if (headerEndPos == -1) break;
+            if (headerEndPos == -1) {
+                break;
+            }
 
             // Extract headers
             String headers = new String(body, pos, headerEndPos - pos, StandardCharsets.UTF_8);
             pos = headerEndPos + headerEnd.length;
 
-            // Find next boundary
+            // Find next boundary (normal or closing) after content
             int nextBoundary = indexOf(body, boundaryBytes, pos);
-            if (nextBoundary == -1) break;
+            int nextClosing = indexOf(body, closingBoundaryBytes, pos);
+            if (nextBoundary == -1 || (nextClosing != -1 && nextClosing < nextBoundary)) {
+                nextBoundary = nextClosing;
+            }
 
-            // Content = bytes bin pos o next boundary
-            int contentEnd = nextBoundary - 2; // -2 = \r\n 9bel boundary
-            byte[] content = Arrays.copyOfRange(body, pos, contentEnd);
+            // If neither found, set to end
+            if (nextBoundary == -1) {
+                nextBoundary = body.length;
+            }
 
-            // Extract filename
+            // Content end excluding CRLF before boundary
+            int contentEnd = nextBoundary;
+            if (contentEnd - 2 >= pos && body[contentEnd - 2] == '\r' && body[contentEnd - 1] == '\n') {
+                contentEnd -= 2;
+            }
+
+            // Extract filename and write directly from source buffer
             String filename = extractFilename(headers);
             if (filename != null && !filename.isEmpty()) {
                 try {
-                    String filePath = uploadDir + "/" + filename;
-                    Files.write(Paths.get(filePath), content);
+                    String storedFilename = buildStoredFilename(filename);
+                    String filePath = uploadDir + "/" + storedFilename;
+                    Files.createDirectories(Paths.get(uploadDir));
+                    try (var out = Files.newOutputStream(Paths.get(filePath))) {
+                        out.write(body, pos, Math.max(0, contentEnd - pos));
+                    }
                     fileSaved++;
                 } catch (IOException e) {
                     return router.errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
                 }
             }
 
+            // Move to next boundary and continue
             pos = nextBoundary;
         }
 
         if (fileSaved > 0) {
             response.setStatus(HttpResponse.OK);
-            response.setBody(("{\"message\": \"" + fileSaved + " fichier(s) mh7fdin!\"}").getBytes(StandardCharsets.UTF_8), "application/json");
+            response.setBody(
+                    ("{\"message\": \"" + fileSaved + " fichier(s) uploaded successfully!\"}").getBytes(StandardCharsets.UTF_8),
+                    "application/json");
         } else {
             response.setStatus(HttpResponse.BAD_REQUEST);
-            response.setBody("{\"error\": \"Ma lqina 7ta fichier f request\"}".getBytes(StandardCharsets.UTF_8), "application/json");
+            response.setBody("{\"error\": \"No files found in request\"}".getBytes(StandardCharsets.UTF_8),
+                    "application/json");
         }
 
         return response;
@@ -117,10 +148,10 @@ public class FileUploadHandler {
 
     // Find byte array f byte array
     private int indexOf(byte[] source, byte[] target, int start) {
-        outer:
-        for (int i = start; i <= source.length - target.length; i++) {
+        outer: for (int i = start; i <= source.length - target.length; i++) {
             for (int j = 0; j < target.length; j++) {
-                if (source[i + j] != target[j]) continue outer;
+                if (source[i + j] != target[j])
+                    continue outer;
             }
             return i;
         }
@@ -131,12 +162,34 @@ public class FileUploadHandler {
         for (String line : headers.split("\r\n")) {
             if (line.contains("Content-Disposition") && line.contains("filename=")) {
                 int start = line.indexOf("filename=\"") + "filename=\"".length();
-                int end   = line.indexOf("\"", start);
+                int end = line.indexOf("\"", start);
                 if (start > 0 && end > start) {
                     return line.substring(start, end);
                 }
             }
         }
         return null;
+    }
+
+    private String buildStoredFilename(String originalFilename) {
+        String safeName = Path.of(originalFilename).getFileName().toString().trim().replace(' ', '_');
+        if (safeName.isEmpty()) {
+            safeName = "upload";
+        }
+
+        int dotIndex = safeName.lastIndexOf('.');
+        String baseName = dotIndex > 0 ? safeName.substring(0, dotIndex) : safeName;
+        String extension = dotIndex > 0 ? safeName.substring(dotIndex) : "";
+
+        return baseName + randomSuffix(24) + extension;
+    }
+
+    private String randomSuffix(int length) {
+        final String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder builder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            builder.append(alphabet.charAt(RANDOM.nextInt(alphabet.length())));
+        }
+        return builder.toString();
     }
 }
