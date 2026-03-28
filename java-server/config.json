@@ -3,57 +3,25 @@
     {
       "host": "127.0.0.1",
       "ports": [8080],
-      "name": "s1",
-      "client_body_limit_bytes": 1245421000,
-      "timeout_seconds": 30,
-      "root_directory": "www",
-      "error_pages": {
-        "400": "errors/400.html",
-        "403": "errors/403.html",
-        "404": "errors/404.html",
-        "405": "errors/405.html",
-        "413": "errors/413.html",
-        "500": "errors/500.html"
-      },
-      "routes": [
-        {
-          "path": "/",
-          "methods": ["GET"]
-        },
-        {
-          "path": "/login",
-          "methods": ["POST"]
-        },
-        {
-          "path": "/profile",
-          "methods": ["GET"]
-        },
-        {
-          "path": "/logout",
-          "methods": ["DELETE"]
-        },
-        {
-          "path": "/upload",
-          "methods": ["POST"]
-        },
-        {
-          "path": "/uploads",
-          "methods": ["GET", "DELETE"]
-        }
-      ],
-      "cgi": {
-        ".py": "/usr/bin/python3",
-        ".php": "/usr/bin/php-cgi"
-      }
-    },
-    {
-      "host": "127.0.0.1",
-      "ports": [8080],
       "name": "localhost",
-      "client_body_limit_bytes": 2097152,
+      "client_body_limit_bytes": 100000000000,
       "timeout_seconds": 60,
-      "root_directory": "www",
-      "error_pages": {
+      "routes": [
+        {
+          "path": "/",
+          "methods": ["GET"],
+          "root_directory": "root",
+          "default_file": "root.html"
+        },
+        {
+          "path": "/best",
+          "methods": ["GET"],
+          "root_directory": "www",
+          "default_file": "index.html",
+          "autoindex": true
+        }
+      ],
+       "error_pages": {
         "400": "errors/400.html",
         "403": "errors/403.html",
         "404": "errors/404.html",
@@ -61,32 +29,6 @@
         "413": "errors/413.html",
         "500": "errors/500.html"
       },
-      "routes": [
-        {
-          "path": "/",
-          "methods": ["GET"]
-        },
-        {
-          "path": "/login",
-          "methods": ["POST"]
-        },
-        {
-          "path": "/profile",
-          "methods": ["GET"]
-        },
-        {
-          "path": "/logout",
-          "methods": ["DELETE"]
-        },
-        {
-          "path": "/upload",
-          "methods": ["POST"]
-        },
-        {
-          "path": "/uploads",
-          "methods": ["GET", "DELETE"]
-        }
-      ],
       "cgi": {
         ".py": "/usr/bin/python3"
       }

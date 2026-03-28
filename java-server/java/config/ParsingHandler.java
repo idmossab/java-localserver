@@ -20,10 +20,19 @@ public final class ParsingHandler {
         public long clientBodyLimitBytes;
         public int timeoutSeconds;
         public String rootDirectory;
+        public String defaultFile;
+        public boolean autoindex;
         public Map<String, String> errorPages;
-        public Map<String, List<String>> routes;
+        public Map<String, RouteConfig> routes;
         public Map<String, String> cgi;
 
+    }
+
+    public static final class RouteConfig {
+        public List<String> methods;
+        public String defaultFile;
+        public boolean autoindex;
+        public String rootDirectory;
     }
 
     private final String jsonText;
@@ -64,7 +73,7 @@ public final class ParsingHandler {
                 try {
                     System.out.println("Parsing server config index " + i);
                     Map<?, ?> serverMap = (Map<?, ?>) serverValue;
-                    checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "error_pages", "routes", "cgi"), "server config");
+                    checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "default_file", "autoindex", "error_pages", "routes", "cgi"), "server config");
                     System.out.println("Checked unknown keys for server config index " + i);
                     ServerConfig serverConfig = new ServerConfig();
                     serverConfig.host = readHost(serverMap);
@@ -81,11 +90,14 @@ public final class ParsingHandler {
                     
                     serverConfig.timeoutSeconds = readTimeoutSeconds(serverMap.get("timeout_seconds"));
                     serverConfig.rootDirectory = readRootDirectory(serverMap.get("root_directory"));
+                    serverConfig.defaultFile = readDefaultFile(serverMap.get("default_file"));
+                    serverConfig.autoindex = readAutoindex(serverMap.get("autoindex"));
                     serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
                     serverConfig.routes = readRoutes(serverMap.get("routes"));
                     serverConfig.cgi = readCGI(serverMap.get("cgi"));
                     validateConfig(serverConfig);
                     servers.add(serverConfig);
+                    System.out.println(serverConfig.defaultFile);
                 } catch (Exception e) {
                     System.err.println("Warning in server index " + i + ": " + e.getMessage());
                 }
@@ -202,6 +214,56 @@ public final class ParsingHandler {
         return (String) value;
     }
 
+    private String readDefaultFile(Object value) {
+        if (value == null) {
+            return "index.html"; // Default default file
+        }
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException("default_file must be string");
+        }
+        return (String) value;
+    }
+
+    private boolean readAutoindex(Object value) {
+        if (value == null) {
+            return false; // Default: autoindex disabled
+        }
+        if (!(value instanceof Boolean)) {
+            throw new IllegalArgumentException("autoindex must be boolean");
+        }
+        return (Boolean) value;
+    }
+
+    private String readRouteDefaultFile(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException("route default_file must be string");
+        }
+        return (String) value;
+    }
+
+    private boolean readRouteAutoindex(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (!(value instanceof Boolean)) {
+            throw new IllegalArgumentException("route autoindex must be boolean");
+        }
+        return (Boolean) value;
+    }
+
+    private String readRouteRootDirectory(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException("route root_directory must be string");
+        }
+        return (String) value;
+    }
+
     private Map<String, String> readErrorPages(Object value) {
         if (!(value instanceof Map<?, ?>)) {
             throw new IllegalArgumentException("error_pages must be object");
@@ -227,13 +289,13 @@ public final class ParsingHandler {
         return pages;
     }
 
-    private Map<String, List<String>> readRoutes(Object value) {
+    private Map<String, RouteConfig> readRoutes(Object value) {
         if (!(value instanceof List<?>)) {
             throw new IllegalArgumentException("routes must be array");
         }
 
         List<?> rawRoutes = (List<?>) value;
-        Map<String, List<String>> map = new HashMap<>();
+        Map<String, RouteConfig> map = new HashMap<>();
 
         for (Object obj : rawRoutes) {
             if (!(obj instanceof Map<?, ?>)) {
@@ -241,7 +303,7 @@ public final class ParsingHandler {
             }
 
             Map<?, ?> routeMap = (Map<?, ?>) obj;
-            checkUnknownKeys(routeMap, Set.of("path", "methods"), "route config");
+            checkUnknownKeys(routeMap, Set.of("path", "methods", "default_file", "autoindex", "root_directory"), "route config");
 
             Object pathObj = routeMap.get("path");
             Object methodsObj = routeMap.get("methods");
@@ -266,7 +328,13 @@ public final class ParsingHandler {
                 methods.add((String) m);
             }
 
-            map.put(path, methods);
+            RouteConfig routeConfig = new RouteConfig();
+            routeConfig.methods = methods;
+            routeConfig.defaultFile = readRouteDefaultFile(routeMap.get("default_file"));
+            routeConfig.autoindex = readRouteAutoindex(routeMap.get("autoindex"));
+            routeConfig.rootDirectory = readRouteRootDirectory(routeMap.get("root_directory"));
+
+            map.put(path, routeConfig);
         }
 
         return map;
@@ -321,11 +389,11 @@ public final class ParsingHandler {
             throw new IllegalArgumentException("timeout_seconds must be positive");
         }
 
-        for (Map.Entry<String, List<String>> route : serverConfig.routes.entrySet()) {
+        for (Map.Entry<String, RouteConfig> route : serverConfig.routes.entrySet()) {
             if (!RegexValidator.isValidPath(route.getKey())) {
                 throw new IllegalArgumentException("route path is invalid: " + route.getKey());
             }
-            if (!RegexValidator.isValidMethods(route.getValue())) {
+            if (!RegexValidator.isValidMethods(route.getValue().methods)) {
                 throw new IllegalArgumentException("route methods are invalid for path: " + route.getKey());
             }
         }

@@ -38,27 +38,8 @@ public class Router {
         }
 
         // CGI handling
-        if (path.endsWith(".cgi")) {
-            RequestContext ctx = new RequestContext(request.getMethod(), request.getPath(), request.getHeaders(), request.getRawBody(), "localhost", 8080);
-            Path scriptPath = Paths.get(wwwRoot, path.substring(1));
-            String extension = path.substring(path.lastIndexOf('.') + 1);
-            RequestContext.RouteMatch routeMatch = new RequestContext.RouteMatch(path, scriptPath, extension, null, "", null, null, true, false);
-            ctx.setRouteMatch(routeMatch);
-            try {
-                cgiHandler.execute(ctx);
-                RequestContext.HttpResponse response = ctx.getResponse();
-                HttpResponse httpResponse = new HttpResponse();
-                httpResponse.setStatus(response.getStatusCode());
-                for (Map.Entry<String, List<String>> entry : response.getHeaders().entrySet()) {
-                    for (String value : entry.getValue()) {
-                        httpResponse.addHeader(entry.getKey(), value);
-                    }
-                }
-                httpResponse.setBody(response.getBody(), "text/html");
-                return httpResponse;
-            } catch (Exception e) {
-                return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
-            }
+        if (isCGI(path)) {
+            return executeCGI(Paths.get(wwwRoot, path.substring(1)), getExtension(path), request);
         }
 
         // Check maxBodySize
@@ -74,12 +55,57 @@ public class Router {
             }
         }
 
+        // Extract and validate route
+        RouteMatch routeMatch;
+        try {
+            routeMatch = extractRoute(request);
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().contains("Route not found")) {
+                return errorResponse(HttpResponse.NOT_FOUND, "404");
+            } else if (e.getMessage().contains("Method not allowed")) {
+                return errorResponse(HttpResponse.METHOD_NOT_ALLOWED, "405");
+            }
+            return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+        }
+
         return switch (method) {
-            case "GET" -> path.equals("/profile") ? handleProfile(request) : handleGet(path, request);
+            case "GET" -> path.equals("/profile") ? handleProfile(request) : handleGet(path, request, routeMatch);
             case "POST" -> path.equals("/login") ? handleLogin(request) : handlePost(path, request);
-            case "DELETE" -> path.equals("/logout") ? handleLogout(request) : handleDelete(path);
+            case "DELETE" -> path.equals("/logout") ? handleLogout(request) : handleDelete(path, routeMatch);
             default -> errorResponse(HttpResponse.METHOD_NOT_ALLOWED, "405");
         };
+    }
+
+    private HttpResponse executeCGI(Path scriptPath, String extension, HttpRequest request) {
+        RequestContext ctx = new RequestContext(request.getMethod(), request.getPath(), request.getHeaders(), request.getRawBody(), "localhost", 8080);
+        RequestContext.RouteMatch routeMatch = new RequestContext.RouteMatch(request.getPath(), scriptPath, extension, null, "", null, null, true, false);
+        ctx.setRouteMatch(routeMatch);
+        try {
+            cgiHandler.execute(ctx);
+            RequestContext.HttpResponse response = ctx.getResponse();
+            HttpResponse httpResponse = new HttpResponse();
+            httpResponse.setStatus(response.getStatusCode());
+            for (Map.Entry<String, List<String>> entry : response.getHeaders().entrySet()) {
+                for (String value : entry.getValue()) {
+                    httpResponse.addHeader(entry.getKey(), value);
+                }
+            }
+            httpResponse.setBody(response.getBody(), "text/html");
+            return httpResponse;
+        } catch (Exception e) {
+            return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+        }
+    }
+
+    private boolean isCGI(String path) {
+        String ext = getExtension(path);
+        return ext != null && config.cgi.containsKey(ext);
+    }
+
+    private String getExtension(String path) {
+        int dot = path.lastIndexOf('.');
+        if (dot == -1) return null;
+        return path.substring(dot);
     }
 
     // ============ Auth & Session ============
@@ -164,29 +190,104 @@ public class Router {
     }
 
     // ============ GET ============
-    private HttpResponse handleGet(String path, HttpRequest request) {
+    private HttpResponse handleGet(String path, HttpRequest request, RouteMatch routeMatch) {
         HttpResponse response = new HttpResponse();
 
-        if (path.equals("/")) {
-            path = "/index.html";
-        }
+        String effectiveRoot = routeMatch.routeConfig.rootDirectory != null ? routeMatch.routeConfig.rootDirectory : wwwRoot;
+        String relativePath = path.substring(routeMatch.path.length());
+        if (relativePath.isEmpty()) relativePath = "/";
+        Path filePath = Paths.get(effectiveRoot + relativePath);
+        System.out.println("Effective root: " + effectiveRoot + ", Route path: " + routeMatch.path + ", Requested path: " + path + ", Relative path: " + relativePath + ", Resolved file path: " + filePath);
 
-        Path filePath = Paths.get(wwwRoot + path);
-
-        if (Files.exists(filePath) && !Files.isDirectory(filePath)) {
-            try {
-                byte[] content = Files.readAllBytes(filePath);
-                String mimeType = getMimeType(path);
-
-                response.setStatus(HttpResponse.OK);
-                response.setBody(content, mimeType);
-            } catch (IOException e) {
-                return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+        // Handle directory fallback using route or server default file
+        if (Files.isDirectory(filePath)) {
+            boolean allowAutoindex = routeMatch.routeConfig.autoindex || config.autoindex;
+            if (allowAutoindex) {
+                return generateDirectoryListing(filePath, relativePath, effectiveRoot);
             }
-        } else {
+
+            String routeDefault = routeMatch.routeConfig.defaultFile != null ? routeMatch.routeConfig.defaultFile : config.defaultFile;
+            Path indexFilePath = filePath.resolve(routeDefault);
+            if (routeDefault != null && Files.exists(indexFilePath) && !Files.isDirectory(indexFilePath)) {
+                try {
+                    byte[] content = Files.readAllBytes(indexFilePath);
+                    String mimeType = getMimeType(routeDefault);
+
+                    response.setStatus(HttpResponse.OK);
+                    response.setBody(content, mimeType);
+                    return response;
+                } catch (IOException e) {
+                    return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+                }
+            }
+
             return errorResponse(HttpResponse.NOT_FOUND, "404");
         }
 
+        // Try directory slash normalization (path may be a directory without trailing slash)
+        if (!Files.exists(filePath)) {
+            Path slashPath = Paths.get(effectiveRoot + (relativePath.endsWith("/") ? relativePath : relativePath + "/"));
+            if (Files.isDirectory(slashPath)) {
+                return handleGet(path.endsWith("/") ? path : path + "/", request, routeMatch);
+            }
+            return errorResponse(HttpResponse.NOT_FOUND, "404");
+        }
+
+        if (!Files.isDirectory(filePath)) {
+            // Check if it's a CGI script
+            if (isCGI(relativePath)) {
+                return executeCGI(filePath, getExtension(relativePath), request);
+            }
+
+            try {
+                byte[] content = Files.readAllBytes(filePath);
+                String mimeType = getMimeType(relativePath);
+
+                response.setStatus(HttpResponse.OK);
+                response.setBody(content, mimeType);
+                return response;
+            } catch (IOException e) {
+                return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+            }
+        }
+
+        return errorResponse(HttpResponse.NOT_FOUND, "404");
+    }
+
+    private HttpResponse generateDirectoryListing(Path dirPath, String requestPath, String effectiveRoot) {
+        HttpResponse response = new HttpResponse();
+        try {
+            StringBuilder html = new StringBuilder();
+            html.append("<html><head><title>Index of ").append(requestPath).append("</title></head><body>\n");
+            html.append("<h1>Index of ").append(requestPath).append("</h1>\n");
+            html.append("<ul>\n");
+
+            // Add parent directory link if not root
+            if (!requestPath.equals("/")) {
+                String parentPath = requestPath.substring(0, requestPath.lastIndexOf('/'));
+                if (parentPath.isEmpty()) parentPath = "/";
+                html.append("<li><a href=\"").append(parentPath).append("\">../</a></li>\n");
+            }
+
+            // List directory contents
+            try (var stream = Files.list(dirPath)) {
+                stream.sorted().forEach(path -> {
+                    String fileName = path.getFileName().toString();
+                    String filePath = requestPath.endsWith("/") ? requestPath + fileName : requestPath + "/" + fileName;
+                    String displayName = Files.isDirectory(path) ? fileName + "/" : fileName;
+                    html.append("<li><a href=\"").append(filePath).append("\">").append(displayName).append("</a></li>\n");
+                });
+            }
+
+            html.append("</ul>\n");
+            html.append("<hr><p>Server generated</p>\n");
+            html.append("</body></html>\n");
+
+            response.setStatus(HttpResponse.OK);
+            response.setBody(html.toString().getBytes(StandardCharsets.UTF_8), "text/html");
+        } catch (IOException e) {
+            return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
+        }
         return response;
     }
 
@@ -204,10 +305,13 @@ public class Router {
     }
 
     // ============ DELETE ============
-    private HttpResponse handleDelete(String path) {
-        Path filePath = Paths.get(wwwRoot + path);
+    private HttpResponse handleDelete(String path, RouteMatch routeMatch) {
+        String effectiveRoot = routeMatch.routeConfig.rootDirectory != null ? routeMatch.routeConfig.rootDirectory : wwwRoot;
+        String relativePath = path.substring(routeMatch.path.length());
+        if (relativePath.isEmpty()) relativePath = "/";
+        Path filePath = Paths.get(effectiveRoot + relativePath);
 
-        if (!filePath.toAbsolutePath().startsWith(Paths.get(wwwRoot).toAbsolutePath())) {
+        if (!filePath.toAbsolutePath().startsWith(Paths.get(effectiveRoot).toAbsolutePath())) {
             return errorResponse(HttpResponse.FORBIDDEN, "403");
         }
 
@@ -226,6 +330,47 @@ public class Router {
         } catch (IOException e) {
             return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
         }
+    }
+
+    // ============ Route Extraction ============
+    public static class RouteMatch {
+        public final String path;
+        public final ParsingHandler.RouteConfig routeConfig;
+
+        public RouteMatch(String path, ParsingHandler.RouteConfig routeConfig) {
+            this.path = path;
+            this.routeConfig = routeConfig;
+        }
+    }
+
+    private RouteMatch extractRoute(HttpRequest request) {
+        String method = request.getMethod().toUpperCase();
+        String requestPath = request.getPath();
+
+        RouteMatch bestMatch = null;
+        int longestMatch = -1;
+
+        for (Map.Entry<String, ParsingHandler.RouteConfig> entry : config.routes.entrySet()) {
+            String routePath = entry.getKey();
+
+            if (!requestPath.startsWith(routePath))
+                continue;
+
+            if (routePath.length() > longestMatch) {
+                bestMatch = new RouteMatch(routePath, entry.getValue());
+                longestMatch = routePath.length();
+            }
+        }
+
+        if (bestMatch == null) {
+            throw new IllegalArgumentException("Route not found");
+        }
+
+        if (!bestMatch.routeConfig.methods.contains(method)) {
+            throw new IllegalArgumentException("Method not allowed");
+        }
+
+        return bestMatch;
     }
 
     // ============ Error Handling ============
