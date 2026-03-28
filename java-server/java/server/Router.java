@@ -91,7 +91,8 @@ public class Router {
                     httpResponse.addHeader(entry.getKey(), value);
                 }
             }
-            httpResponse.setBody(response.getBody(), "text/html");
+            var content_type = response.getHeaders().getOrDefault("Content-Type", List.of("text/plain")).get(0);
+            httpResponse.setBody(response.getBody(), content_type);
             return httpResponse;
         } catch (Exception e) {
             return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
