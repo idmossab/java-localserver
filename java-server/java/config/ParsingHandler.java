@@ -25,6 +25,7 @@ public final class ParsingHandler {
         public Map<String, String> errorPages;
         public Map<String, RouteConfig> routes;
         public Map<String, String> cgi;
+        public String cgiRoot;
 
     }
 
@@ -73,7 +74,7 @@ public final class ParsingHandler {
                 try {
                     System.out.println("Parsing server config index " + i);
                     Map<?, ?> serverMap = (Map<?, ?>) serverValue;
-                    checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "default_file", "autoindex", "error_pages", "routes", "cgi"), "server config");
+                    checkUnknownKeys(serverMap, Set.of("host", "ports", "name", "client_body_limit_bytes", "timeout_seconds", "root_directory", "default_file", "autoindex", "error_pages", "routes", "cgi", "cgi_root"), "server config");
                     System.out.println("Checked unknown keys for server config index " + i);
                     ServerConfig serverConfig = new ServerConfig();
                     serverConfig.host = readHost(serverMap);
@@ -95,6 +96,7 @@ public final class ParsingHandler {
                     serverConfig.errorPages = readErrorPages(serverMap.get("error_pages"));
                     serverConfig.routes = readRoutes(serverMap.get("routes"));
                     serverConfig.cgi = readCGI(serverMap.get("cgi"));
+                    serverConfig.cgiRoot = readString(serverMap.get("cgi_root"));
                     validateConfig(serverConfig);
                     servers.add(serverConfig);
                     System.out.println(serverConfig.defaultFile);
@@ -243,7 +245,15 @@ public final class ParsingHandler {
         }
         return (String) value;
     }
-
+    private String readString(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String)) {
+            throw new IllegalArgumentException("must be string");
+        }
+        return (String) value;
+    }
     private boolean readRouteAutoindex(Object value) {
         if (value == null) {
             return false;

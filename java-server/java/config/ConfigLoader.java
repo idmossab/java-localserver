@@ -25,6 +25,8 @@ public final class ConfigLoader {
             // copy all servers
             this.servers = new ArrayList<>(parser.servers);
             this.serverConfig = servers.get(0); // assume single server
+            this.cgiTimeoutMillis = Math.max(1L, serverConfig.timeoutSeconds) * 1000L;
+            this.projectRoot = Paths.get(".").toAbsolutePath().normalize();
 
         } catch (Exception e) {
             System.err.println("ConfigLoader error: " + e.getMessage());

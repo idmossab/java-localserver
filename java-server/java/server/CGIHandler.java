@@ -1,7 +1,6 @@
 package server;
 
 import config.ConfigLoader;
-import server.ErrorResponses;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,6 +34,7 @@ public final class CGIHandler {
             }
 
             Path scriptPath = requireReadableScript(routeMatch.getScriptPath());
+            System.out.println("Executing CGI script: " + scriptPath);
             String extension = requireExtension(routeMatch.getCgiExtension(), scriptPath);
             String interpreter = config.getCgiInterpreter(extension);
             if (interpreter == null || interpreter.isBlank()) {

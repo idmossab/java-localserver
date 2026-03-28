@@ -187,8 +187,9 @@ public final class Server {
             ByteBuffer responseBuffer = ByteBuffer.wrap(response.build());
             client.write(responseBuffer);
             client.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("Error handling client: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

@@ -37,11 +37,6 @@ public class Router {
             return errorResponse(HttpResponse.BAD_REQUEST, "400");
         }
 
-        // CGI handling
-        if (isCGI(path)) {
-            return executeCGI(Paths.get(wwwRoot, path.substring(1)), getExtension(path), request);
-        }
-
         // Check maxBodySize
         String contentLength = request.getHeaders().get("Content-Length");
         if (contentLength != null) {
@@ -77,7 +72,13 @@ public class Router {
     }
 
     private HttpResponse executeCGI(Path scriptPath, String extension, HttpRequest request) {
-        RequestContext ctx = new RequestContext(request.getMethod(), request.getPath(), request.getHeaders(), request.getRawBody(), "localhost", 8080);
+        RequestContext ctx = new RequestContext(
+                request.getMethod(),
+                request.getPath(),
+                request.getHeaders(),
+                request.getRawBody(),
+                resolveServerName(request),
+                resolveServerPort(request));
         RequestContext.RouteMatch routeMatch = new RequestContext.RouteMatch(request.getPath(), scriptPath, extension, null, "", null, null, true, false);
         ctx.setRouteMatch(routeMatch);
         try {
@@ -95,6 +96,44 @@ public class Router {
         } catch (Exception e) {
             return errorResponse(HttpResponse.INTERNAL_SERVER_ERROR, "500");
         }
+    }
+
+    private String resolveServerName(HttpRequest request) {
+        String hostHeader = request.getHeaders().get("Host");
+        if (hostHeader != null && !hostHeader.isBlank()) {
+            String normalized = hostHeader.trim();
+            int colonIndex = normalized.lastIndexOf(':');
+            if (colonIndex > 0) {
+                return normalized.substring(0, colonIndex);
+            }
+            return normalized;
+        }
+
+        if (config.name != null && !config.name.isBlank()) {
+            return config.name;
+        }
+
+        return config.host;
+    }
+
+    private int resolveServerPort(HttpRequest request) {
+        String hostHeader = request.getHeaders().get("Host");
+        if (hostHeader != null && !hostHeader.isBlank()) {
+            String normalized = hostHeader.trim();
+            int colonIndex = normalized.lastIndexOf(':');
+            if (colonIndex > 0 && colonIndex < normalized.length() - 1) {
+                try {
+                    return Integer.parseInt(normalized.substring(colonIndex + 1));
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
+
+        if (config.ports != null && !config.ports.isEmpty()) {
+            return config.ports.get(0);
+        }
+
+        return 80;
     }
 
     private boolean isCGI(String path) {
@@ -195,15 +234,16 @@ public class Router {
 
         String effectiveRoot = routeMatch.routeConfig.rootDirectory != null ? routeMatch.routeConfig.rootDirectory : wwwRoot;
         String relativePath = path.substring(routeMatch.path.length());
-        if (relativePath.isEmpty()) relativePath = "/";
-        Path filePath = Paths.get(effectiveRoot + relativePath);
+        if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+        if (relativePath.isEmpty()) relativePath = "";
+        Path filePath = Path.of(effectiveRoot).resolve(relativePath);
         System.out.println("Effective root: " + effectiveRoot + ", Route path: " + routeMatch.path + ", Requested path: " + path + ", Relative path: " + relativePath + ", Resolved file path: " + filePath);
 
         // Handle directory fallback using route or server default file
         if (Files.isDirectory(filePath)) {
             boolean allowAutoindex = routeMatch.routeConfig.autoindex || config.autoindex;
             if (allowAutoindex) {
-                return generateDirectoryListing(filePath, relativePath, effectiveRoot);
+                return generateDirectoryListing(filePath, path, effectiveRoot);
             }
 
             String routeDefault = routeMatch.routeConfig.defaultFile != null ? routeMatch.routeConfig.defaultFile : config.defaultFile;
@@ -226,7 +266,8 @@ public class Router {
 
         // Try directory slash normalization (path may be a directory without trailing slash)
         if (!Files.exists(filePath)) {
-            Path slashPath = Paths.get(effectiveRoot + (relativePath.endsWith("/") ? relativePath : relativePath + "/"));
+            String slashRelative = relativePath + (relativePath.isEmpty() || relativePath.endsWith("/") ? "" : "/");
+            Path slashPath = Path.of(effectiveRoot).resolve(slashRelative);
             if (Files.isDirectory(slashPath)) {
                 return handleGet(path.endsWith("/") ? path : path + "/", request, routeMatch);
             }
@@ -308,8 +349,8 @@ public class Router {
     private HttpResponse handleDelete(String path, RouteMatch routeMatch) {
         String effectiveRoot = routeMatch.routeConfig.rootDirectory != null ? routeMatch.routeConfig.rootDirectory : wwwRoot;
         String relativePath = path.substring(routeMatch.path.length());
-        if (relativePath.isEmpty()) relativePath = "/";
-        Path filePath = Paths.get(effectiveRoot + relativePath);
+        if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+        Path filePath = Path.of(effectiveRoot).resolve(relativePath);
 
         if (!filePath.toAbsolutePath().startsWith(Paths.get(effectiveRoot).toAbsolutePath())) {
             return errorResponse(HttpResponse.FORBIDDEN, "403");

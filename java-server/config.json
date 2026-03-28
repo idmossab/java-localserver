@@ -11,7 +11,7 @@
           "path": "/",
           "methods": ["GET"],
           "root_directory": "root",
-          "default_file": "root.html"
+          "autoindex": true
         },
         {
           "path": "/best",
@@ -31,7 +31,8 @@
       },
       "cgi": {
         ".py": "/usr/bin/python3"
-      }
+      },
+      "cgi_root": "root"
     }
   ]
 }
